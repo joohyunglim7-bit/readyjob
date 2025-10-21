@@ -1,0 +1,1739 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>레디잡 (ReadyJob) - AI 취업 에이전트</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <style>
+        /* ===== 1. 전체 배경색 변경 ===== */
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #F5F3F9;
+            background-image: url('https://i.imgur.com/oSBoqqy.png');
+            /* 새 배경 이미지 */
+            background-attachment: fixed;
+            /* 스크롤해도 배경은 고정 */
+            background-size: cover;
+            /* 배경 이미지를 화면에 꽉 채움 */
+            background-position: center;
+            /* 배경 이미지를 중앙에 위치 */
+        }
+
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        .feature-section {
+            display: none;
+        }
+
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #A08CDA;
+            border-radius: 50%;
+            /* 색상 변경 */
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Chat UI */
+        .chat-bubble {
+            max-width: 85%;
+        }
+
+        .chat-bubble-user {
+            background-color: #A08CDA;
+            color: white;
+            border-radius: 20px 20px 5px 20px;
+        }
+
+        /* 색상 변경 */
+        .chat-bubble-ai {
+            background-color: #e5e7eb;
+            color: #1f2937;
+            border-radius: 20px 20px 20px 5px;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Tab Styles */
+        .tab-btn {
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn.active {
+            border-color: #A08CDA;
+            color: #A08CDA;
+        }
+
+        /* 색상 변경 */
+        /* Prose styles for result */
+        .prose h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+            font-size: 1.25rem;
+        }
+
+        .prose h4 {
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .prose p {
+            margin-bottom: 1rem;
+            line-height: 1.75;
+        }
+
+        .prose ul {
+            list-style-position: inside;
+            padding-left: 0;
+        }
+
+        .prose li {
+            margin-bottom: 0.5rem;
+        }
+
+        .prose .result-card {
+            background-color: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+
+        /* Quiz UI Styles */
+        .quiz-options-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .quiz-options-container input[type="radio"] {
+            display: none;
+        }
+
+        .quiz-options-container label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            border: 2px solid transparent;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.75rem;
+            /* Emoji size */
+            transition: all 0.2s ease-in-out;
+            background-color: #f3f4f6;
+        }
+
+        .quiz-options-container input[type="radio"]:checked+label {
+            transform: scale(1.2);
+            border-color: #A08CDA;
+            /* 색상 변경 */
+        }
+
+        @media (max-width: 640px) {
+            .quiz-options-container label {
+                width: 40px;
+                height: 40px;
+                font-size: 1.5rem;
+            }
+        }
+
+        /* New Selection Box Styles */
+        .selection-box {
+            display: inline-block;
+            padding: 8px 12px;
+            margin: 4px;
+            border: 1px solid #d1d5db;
+            /* gray-300 */
+            border-radius: 16px;
+            /* rounded-full */
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.875rem;
+            /* text-sm */
+            background-color: #f9fafb;
+            /* gray-50 */
+        }
+
+        .selection-box:hover {
+            background-color: #f3f4f6;
+            /* gray-100 */
+            border-color: #9ca3af;
+            /* gray-400 */
+        }
+
+        /* ===== 2. 선택 박스 색상 변경 ===== */
+        .selection-box.selected {
+            background-color: #EAE6F6;
+            border-color: #A08CDA;
+            color: #8A73C8;
+            font-weight: 500;
+        }
+
+        #login-section {
+            background-image: url('https://i.imgur.com/xJYWFcH.jpeg');
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        /* ===== 3. 파스텔 테마 추가 스타일 ===== */
+        .pastel-bg-primary {
+            background-color: #A08CDA !important;
+        }
+
+        .pastel-bg-primary-hover:hover {
+            background-color: #8A73C8 !important;
+        }
+
+        .pastel-bg-icon-1 {
+            background-color: #EAE6F6 !important;
+        }
+
+        .pastel-text-icon-1 {
+            color: #A592D5 !important;
+        }
+
+        .pastel-bg-icon-2 {
+            background-color: #E3DFF2 !important;
+        }
+
+        .pastel-text-icon-2 {
+            color: #8F7AC8 !important;
+        }
+
+        /* ===== 4. 완료 상태 및 다시하기 버튼 스타일 추가 ===== */
+        .f1-main-card.completed {
+            border: 2px solid #A08CDA;
+            background-color: #F9F7FD;
+        }
+
+        .completion-badge {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background-color: #A08CDA;
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .card-button-container {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .view-result-button {
+            background-color: #A08CDA;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: background-color 0.2s;
+            flex-grow: 1;
+            /* 버튼이 공간을 채우도록 */
+        }
+
+        .view-result-button:hover {
+            background-color: #8A73C8;
+        }
+
+        .reset-button {
+            background-color: #e5e7eb;
+            color: #4b5563;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            transition: background-color 0.2s;
+        }
+
+        .reset-button:hover {
+            background-color: #d1d5db;
+        }
+
+        /* ===== 5. 사회 경험 UI 개선 스타일 ===== */
+        .form-label {
+            display: flex;
+            align-items: center;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-label svg {
+            width: 1.25rem;
+            height: 1.25rem;
+            margin-right: 0.5rem;
+            color: #A08CDA;
+        }
+
+        .task-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .task-input {
+            flex-grow: 1;
+        }
+
+        .delete-task-btn,
+        .add-task-btn {
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 0.25rem;
+        }
+
+        .delete-task-btn svg {
+            color: #ef4444;
+        }
+
+        .add-task-btn {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            justify-content: center;
+            padding: 0.5rem;
+            border: 2px dashed #d1d5db;
+            border-radius: 0.375rem;
+            color: #6b7280;
+            margin-top: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .add-task-btn:hover {
+            background-color: #f3f4f6;
+            border-color: #A08CDA;
+            color: #A08CDA;
+        }
+
+        .add-task-btn svg {
+            width: 1rem;
+            height: 1rem;
+            margin-right: 0.5rem;
+        }
+
+        .experience-card {
+            background-color: #ffffff;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            position: relative;
+        }
+
+        .experience-card .exp-type-badge {
+            display: inline-block;
+            background-color: #EAE6F6;
+            color: #8A73C8;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .experience-card ul {
+            list-style: disc;
+            padding-left: 1.5rem;
+        }
+
+        /* Scenario Quiz Styles */
+        .scenario-question {
+            background-color: white;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+
+        .scenario-question p {
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #374151;
+        }
+
+        .scenario-option {
+            display: block;
+            background-color: #f9fafb;
+            padding: 0.75rem 1rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .scenario-option:hover {
+            background-color: #f3f4f6;
+            border-color: #9ca3af;
+        }
+
+        .scenario-option input {
+            display: none;
+        }
+
+        .scenario-option input:checked+span {
+            font-weight: 600;
+            color: #8A73C8;
+        }
+
+        .scenario-option input:checked+span::before {
+            content: '✔ ';
+        }
+
+        /* ===== 6. 자소서 문항 카드 UI 스타일 ===== */
+        .category-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            border: 2px solid #e5e7eb;
+            /* gray-200 */
+            border-radius: 0.75rem;
+            /* rounded-xl */
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            background-color: white;
+            height: 100px;
+        }
+
+        .category-card:hover {
+            border-color: #A08CDA;
+            background-color: #F9F7FD;
+            transform: translateY(-4px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .category-card.selected {
+            border-color: #A08CDA;
+            background-color: #EAE6F6;
+            color: #8A73C8;
+            font-weight: 700;
+        }
+
+        .category-card svg {
+            width: 2rem;
+            /* w-8 */
+            height: 2rem;
+            /* h-8 */
+            margin-bottom: 0.5rem;
+            /* mb-2 */
+        }
+
+        .category-card-text {
+            font-size: 0.875rem;
+            /* text-sm */
+        }
+
+        #f2-question-detail-container {
+            transition: opacity 0.3s ease-in-out;
+        }
+    </style>
+</head>
+
+<body class="text-gray-800">
+
+    <div id="login-section" class="flex items-center justify-center min-h-screen">
+        <div class="w-full max-w-md p-4 sm:p-6">
+            <form id="loginForm" class="bg-white/90 backdrop-blur-sm shadow-lg rounded-xl px-8 pt-6 pb-8 mb-4">
+                <div class="text-center mb-10">
+                    <p class="text-lg text-gray-600 mt-2">AI 취업 파트너</p>
+                    <p class="text-gray-500 mt-4">로그인하여 취업 여정을 시작하세요.</p>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="username">아이디</label>
+                    <input
+                        class="shadow-sm appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        id="username" type="text" value="test1">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="password">비밀번호</label>
+                    <input
+                        class="shadow-sm appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        id="password" type="password" value="test1">
+                    <p id="errorMessage" class="text-red-500 text-xs italic hidden">아이디 또는 비밀번호가 일치하지 않습니다.</p>
+                </div>
+                <button
+                    class="pastel-bg-primary pastel-bg-primary-hover text-white font-bold py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline w-full"
+                    type="submit">로그인</button>
+            </form>
+            <p class="text-center text-white text-xs">&copy;2024 ReadyJob. All rights reserved.</p>
+        </div>
+    </div>
+
+    <div id="app-section" class="hidden">
+        <nav class="bg-white shadow-md sticky top-0 z-30">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <div class="flex items-center cursor-pointer" id="home-button">
+                        <img src="https://i.imgur.com/SSGsYNh.png" alt="ReadyJob Logo" class="h-9 w-auto">
+                    </div>
+                    <div class="flex items-center">
+                        <span id="welcome-message" class="mr-4 hidden sm:block"></span>
+                        <button id="logoutButton"
+                            class="pastel-bg-primary pastel-bg-primary-hover text-white px-3 py-2 rounded-md text-sm font-medium">로그아웃</button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <main id="dashboard-main" class="max-w-7xl mx-auto py-8 px-4 sm:py-12 sm:px-6 lg:px-8">
+            <div id="main-header" class="text-center mb-12">
+                <h1 class="text-3xl font-bold tracking-tight text-gray-900 sm:text-5xl">당신의 성공적인 취업을 위한 AI 취업 에이전트</h1>
+                <p class="mt-4 text-xl text-gray-600">READYJOB과 함께 최고의 자기소개서를 만들고, 면접에 완벽히 대비하세요.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div data-target="feature1-section"
+                    class="feature-card bg-white rounded-xl shadow-lg p-8 flex items-center space-x-6 transition duration-300 card-hover cursor-pointer">
+                    <div class="pastel-bg-icon-1 p-4 rounded-full"><svg class="h-10 w-10 pastel-text-icon-1" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg></div>
+                    <div>
+                        <h3 class="text-2xl font-bold mb-1">자기 분석 & 프로필 생성</h3>
+                        <p class="text-gray-600">AI 자소서/면접의 기본이 되는 나를 알아가는 시간입니다.</p>
+                    </div>
+                </div>
+                <div data-target="feature2-section"
+                    class="feature-card bg-white rounded-xl shadow-lg p-8 flex items-center space-x-6 transition duration-300 card-hover cursor-pointer">
+                    <div class="pastel-bg-icon-2 p-4 rounded-full"><svg class="h-10 w-10 pastel-text-icon-2" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002 2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg></div>
+                    <div>
+                        <h3 class="text-2xl font-bold mb-1">AI 자소서 생성</h3>
+                        <p class="text-gray-600">내 프로필 기반으로 매력적인 자소서를 완성하세요.</p>
+                    </div>
+                </div>
+                <div data-target="feature3-section"
+                    class="feature-card bg-white rounded-xl shadow-lg p-8 flex items-center space-x-6 transition duration-300 card-hover cursor-pointer">
+                    <div class="pastel-bg-icon-1 p-4 rounded-full"><svg class="h-10 w-10 pastel-text-icon-1" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a2 2 0 01-2-2V4a2 2 0 012-2h8a2 2 0 012 2v4z" />
+                        </svg></div>
+                    <div>
+                        <h3 class="text-2xl font-bold mb-1">AI 면접 시뮬레이션</h3>
+                        <p class="text-gray-600">실전같은 AI 면접으로 자신감을 완성하세요.</p>
+                    </div>
+                </div>
+                <div data-target="feature4-section"
+                    class="feature-card bg-white rounded-xl shadow-lg p-8 flex items-center space-x-6 transition duration-300 card-hover cursor-pointer">
+                    <div class="pastel-bg-icon-2 p-4 rounded-full"><svg class="h-10 w-10 pastel-text-icon-2" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg></div>
+                    <div>
+                        <h3 class="text-2xl font-bold mb-1">개인 경력 관리</h3>
+                        <p class="text-gray-600">나의 커리어를 추적하고 최신 트렌드를 확인하세요.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <div id="feature-content-wrapper" class="max-w-7xl mx-auto py-8 px-4 sm:py-12 sm:px-6 lg:px-8">
+            <section id="feature1-section" class="feature-section"></section>
+            <section id="feature2-section" class="feature-section"></section>
+            <section id="feature3-section" class="feature-section"></section>
+            <section id="feature4-section" class="feature-section"></section>
+        </div>
+    </div>
+
+    <script type="module">
+        // --- 전역 변수 및 설정 ---
+        const API_KEY = "AIzaSyClJNqPiKma3ocMtGu4MmB6zu4F5yL9Rys"; // 💎 여기에 Gemini API 키를 입력하세요.
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
+
+        const SUPABASE_URL = 'https://kqaaqmmigwqqtdlrvwat.supabase.co'; // 백엔드와 동일
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxYWFxbW1pZ3dxcXRkbHJ2d2F0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEwMDQ5NjksImV4cCI6MjA3NjU4MDk2OX0.CZUmPc5GzUBPaD8WnD2CS1Qn5CVQw9VAuheI64eqPis'; // service_role 키가 아닌 anon (public) 키
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // [수정] localStorage 대신 백엔드 API로 저장
+        async function saveUserData(username, data) {
+            if (!username) return;
+
+            try {
+                const dataToSave = { feature1Data: data };
+
+                // 5단계에서 만든 [API 2] 호출
+                const { error } = await supabaseClient
+                    .from('profiles')
+                    .upsert({ username: username, data: dataToSave }, { onConflict: 'username' }); // username이 겹치면 덮어씁니다.
+
+                if (error) throw error;
+
+            } catch (error) {
+                console.error('데이터 저장 실패 (Supabase 오류):', error);
+            }
+        }
+
+        const initialFeature1Data = {
+            jobInfo: null, // null로 변경하여 완료 여부 체크
+            jobValueResult: null,
+            personalityResult: null,
+            workStyleResult: null,
+            socialExperiences: [],
+        };
+
+        const appState = {
+            currentUser: null,
+            feature1Data: JSON.parse(JSON.stringify(initialFeature1Data)), // 초기 상태 복사
+            feature2Data: { generatedCount: 0 },
+            feature4Data: {
+                trends: [
+                    { title: "2024년 하반기 IT 산업 채용 트렌드 분석", summary: "클라우드 네이티브 및 AI 전문가 수요가 급증하고 있으며, 개발자의 소프트 스킬 중요성이 더욱 강조되고 있습니다.", link: "#" },
+                    { title: "마케팅 직무, 이제는 데이터 분석이 필수", summary: "퍼포먼스 마케팅의 성장으로 데이터 분석 및 활용 능력을 갖춘 마케터에 대한 선호도가 높아지고 있습니다.", link: "#" }
+                ]
+            }
+        };
+
+        // --- 선택지 데이터 ---
+        const industries = ["IT·웹·통신", "은행·금융", "제조·화학", "서비스", "유통·무역·운송", "건설", "의료·제약·바이오", "교육", "미디어·디자인", "공공·비영리", "부동산", "소비재", "법률·회계", "컨설팅"];
+        const jobCategories = ["경영·사무", "교육", "농림어업", "보건·의료", "연구·공학기술", "영업·판매", "예술", "방송", "디자인", "사회복지", "컴퓨터·IT·시스템개발", "금융·보험"];
+        const jobDuties = ["기획·전략", "마케팅·홍보·조사", "회계·세무·재무", "인사·노무·HRD", "총무·법무·사무", "IT개발·데이터", "디자인", "영업·판매·무역", "고객상담·TM", "구매·자재·물류", "상품기획·MD", "운전·운송·배송", "서비스", "생산", "건설·건축", "의료", "연구·R&D", "교육", "미디어·문화·스포츠", "금융·보험", "영업·판촉", "공공·복지"];
+        const majors = ["컴퓨터공학", "소프트웨어공학", "정보통신공학", "전기전자공학", "기계공학", "화학공학", "신소재공학", "산업공학", "건축공학", "경영학", "경제학", "통계학", "광고홍보학", "미디어커뮤니케이션", "국어국문학", "영어영문학", "중어중문학", "일어일문학", "사학", "철학", "심리학", "사회학", "정치외교학", "행정학", "법학", "시각디자인", "산업디자인", "의류학", "식품영양학", "간호학", "물리학", "화학", "생명과학", "수학", "지구과학", "교육학", "유아교육", "음악", "미술"];
+
+        // --- DOM 요소 ---
+        const loginSection = document.getElementById('login-section');
+        const appSection = document.getElementById('app-section');
+        const loginForm = document.getElementById('loginForm');
+        const logoutButton = document.getElementById('logoutButton');
+        const homeButton = document.getElementById('home-button');
+        const dashboardMain = document.getElementById('dashboard-main');
+
+        // --- 데이터 관리 함수 (로컬 스토리지 대신 백엔드 API로 저장) ---
+        // [수정] localStorage 대신 백엔드 API로 저장
+        async function loadUserData(username) {
+            if (!username) return null;
+
+            try {
+                // 5단계에서 만든 [API 1] 호출
+                const { data, error } = await supabaseClient
+                    .from('profiles')
+                    .select('data') // 'data' 열만 가져옵니다.
+                    .eq('username', username) // username이 일치하는 것을 찾습니다.
+                    .single(); // 하나의 결과만 가져옵니다.
+
+                if (error) {
+                    // 'single()'은 데이터가 없으면 오류를 반환합니다. 
+                    // 이는 정상적인 상황(신규 유저)이므로 콘솔에만 기록합니다.
+                    console.warn('프로필 로드 실패 (신규 유저일 수 있음):', error.message);
+                    return null;
+                }
+
+                return data ? data.data : null; // data.data -> { feature1Data: { ... } }
+
+            } catch (error) {
+                console.error('데이터 불러오기 실패 (Supabase API 오류):', error);
+                return null;
+            }
+        }
+
+        // --- 핵심 로직 (Gemini API 호출) ---
+        async function callGeminiAPI(prompt, isJson = false) {
+            // 💎 API 키가 없거나 유효하지 않으면 데모 응답을 반환하는 로직을 강화했습니다.
+            if (!API_KEY || !API_KEY.startsWith("AIza")) {
+                console.warn("API 키가 유효하지 않습니다. 데모 응답을 반환합니다.");
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                if (isJson) {
+                    return JSON.stringify({
+                        overall: "전반적으로 직무에 대한 이해도가 높고 자신의 경험을 잘 연결하여 답변하는 모습이 인상적이었습니다.",
+                        scores: { '직무 이해도': 85, '논리력': 90, '의사소통': 75, '경험의 구체성': 80, '인성/가치관': 85 },
+                        tip: "STAR 기법을 활용하여 자신의 경험을 구조적으로 설명하는 연습을 더 해보세요.",
+                        improved_scripts: [{
+                            user_answer: "저는 소통을 잘합니다.",
+                            improved_script: "저는 상대방의 의견을 경청하고 핵심을 파악하여 명확한 해결책을 제시하는 커뮤니케이션 역량을 갖추고 있습니다. 실제로 OO프로젝트 당시, 팀원 간의 갈등을 중재하여 목표를 성공적으로 달성한 경험이 있습니다."
+                        }],
+                        expressionFeedback: "데모 모드에서는 표정 분석이 제공되지 않습니다."
+                    });
+                }
+                if (prompt.includes("면접관 역할")) return "네, 좋은 답변 감사합니다. 다음 질문 드리겠습니다. 지원한 직무에서 가장 중요하다고 생각하는 역량은 무엇인가요?";
+                return `[데모] AI 응답입니다.`;
+            }
+
+            try {
+                const generationConfig = isJson ? { response_mime_type: "application/json" } : {};
+                const payload = {
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig
+                };
+                const response = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
+                const result = await response.json();
+                const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!text) throw new Error("API 응답 파싱 실패");
+                return text.trim().replace(/\*\*/g, '');
+            } catch (error) {
+                console.error("Gemini API 호출 오류:", error);
+                return isJson ? '{"error":"AI 응답 생성 중 오류가 발생했습니다."}' : "AI 응답 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
+            }
+        }
+
+        // --- 뷰 관리 ---
+        function showView(viewName) {
+            dashboardMain.style.display = 'none';
+            document.querySelectorAll('.feature-section').forEach(s => s.style.display = 'none');
+
+            if (viewName === 'dashboard') {
+                dashboardMain.style.display = 'block';
+            } else {
+                const targetSection = document.getElementById(viewName);
+                if (targetSection) targetSection.style.display = 'block';
+            }
+            window.scrollTo(0, 0);
+        }
+
+        // --- 초기화 및 이벤트 리스너 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const username = document.getElementById('username').value;
+                appState.currentUser = username;
+                const userData = await loadUserData(username);
+                if (userData && userData.feature1Data) {
+                    appState.feature1Data = { ...initialFeature1Data, ...userData.feature1Data };
+                } else {
+                    appState.feature1Data = JSON.parse(JSON.stringify(initialFeature1Data));
+                }
+                document.getElementById('welcome-message').textContent = `${username}님, 환영합니다!`;
+                loginSection.classList.add('hidden');
+                appSection.classList.remove('hidden');
+                showView('dashboard');
+            });
+            logoutButton.addEventListener('click', () => {
+                saveUserData(appState.currentUser, appState.feature1Data);
+                appState.currentUser = null;
+                appSection.classList.add('hidden');
+                loginSection.classList.remove('hidden');
+                location.reload(); // 로그아웃 시 새로고침하여 상태 초기화
+            });
+            homeButton.addEventListener('click', () => showView('dashboard'));
+            document.querySelectorAll('.feature-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const targetId = card.dataset.target;
+                    renderFeaturePage(targetId);
+                    showView(targetId);
+                });
+            });
+        });
+
+        // ✅ [수정] 페이지 렌더링 로직 수정
+        function renderFeaturePage(pageId) {
+            const container = document.getElementById(pageId);
+
+            // Feature 1은 자체적인 바인딩 로직을 가지므로 그대로 둠
+            if (pageId === 'feature1-section') {
+                container.innerHTML = getFeature1HTML();
+                updateF1CardStates();
+                bindFeature1Listeners();
+                return;
+            }
+
+            // 다른 기능들은 항상 HTML을 새로 그리고 이벤트 리스너를 바인딩함
+            let html = '';
+            if (pageId === 'feature2-section') html = getFeature2HTML();
+            else if (pageId === 'feature3-section') html = getFeature3HTML();
+            else if (pageId === 'feature4-section') html = getFeature4HTML();
+
+            container.innerHTML = html;
+            bindEventListeners(pageId); // 항상 이벤트 리스너 바인딩
+        }
+
+        // --- F1 카드 상태 업데이트 함수 (이하 F1 관련 코드는 변경 없음) ---
+        function updateF1CardStates() {
+            const { jobInfo, jobValueResult, personalityResult, workStyleResult, socialExperiences } = appState.feature1Data;
+            const completionStatus = {
+                'f1-card-job': jobInfo,
+                'f1-card-jobValue': jobValueResult,
+                'f1-card-personality': personalityResult,
+                'f1-card-workStyle': workStyleResult,
+                'f1-card-experience': socialExperiences.length > 0
+            };
+
+            for (const [cardId, isCompleted] of Object.entries(completionStatus)) {
+                const card = document.getElementById(cardId);
+                if (!card) continue;
+
+                card.querySelector('.completion-badge')?.remove();
+                card.querySelector('.card-button-container')?.remove();
+
+                if (isCompleted) {
+                    card.classList.add('completed');
+                    if (cardId !== 'f1-card-experience') card.classList.remove('cursor-pointer');
+                    card.style.position = 'relative';
+
+                    const badge = document.createElement('div');
+                    badge.className = 'completion-badge';
+                    badge.textContent = '✔️ 완료';
+                    card.appendChild(badge);
+
+                    const buttonContainer = document.createElement('div');
+                    buttonContainer.className = 'card-button-container';
+
+                    const viewResultButton = document.createElement('button');
+                    viewResultButton.className = 'view-result-button';
+                    viewResultButton.textContent = '결과보기';
+                    viewResultButton.dataset.targetCard = cardId;
+                    viewResultButton.onclick = (e) => {
+                        e.stopPropagation();
+                        const targetCardId = e.currentTarget.dataset.targetCard;
+                        const container = document.getElementById('feature1-section');
+                        if (targetCardId === 'f1-card-job') {
+                            container.innerHTML = getF1JobResultHTML(appState.feature1Data.jobInfo);
+                            document.getElementById('f1-back-btn').onclick = () => {
+                                container.innerHTML = getFeature1HTML();
+                                updateF1CardStates();
+                                bindFeature1Listeners();
+                            };
+                            return;
+                        }
+                        const cardTypeMap = { 'f1-card-jobValue': 'jobValue', 'f1-card-personality': 'personality', 'f1-card-workStyle': 'workStyle' };
+                        const resultKeyMap = { 'f1-card-jobValue': 'jobValueResult', 'f1-card-personality': 'personalityResult', 'f1-card-workStyle': 'workStyleResult' };
+                        if (cardTypeMap[targetCardId]) {
+                            handleCardClick(cardTypeMap[targetCardId], resultKeyMap[targetCardId], true);
+                        }
+                    };
+
+                    const resetButton = document.createElement('button');
+                    resetButton.className = 'reset-button';
+                    resetButton.textContent = '초기화';
+                    resetButton.dataset.resetTarget = cardId;
+                    resetButton.onclick = (e) => {
+                        e.stopPropagation();
+                        if (confirm('정말로 이 항목을 초기화하고 다시 시작하시겠습니까?')) resetF1Data(cardId);
+                    };
+
+                    if (cardId === 'f1-card-experience') {
+                        const editButton = document.createElement('button');
+                        editButton.className = 'view-result-button';
+                        editButton.textContent = '수정하기';
+                        editButton.style.flexGrow = '1';
+                        editButton.onclick = (e) => { e.stopPropagation(); card.click(); };
+                        buttonContainer.appendChild(editButton);
+                    } else {
+                        buttonContainer.appendChild(viewResultButton);
+                        buttonContainer.appendChild(resetButton);
+                    }
+                    card.appendChild(buttonContainer);
+                } else {
+                    card.classList.remove('completed');
+                    card.classList.add('cursor-pointer');
+                    card.style.position = '';
+                }
+            }
+        }
+        function resetF1Data(cardId) {
+            switch (cardId) {
+                case 'f1-card-job': appState.feature1Data.jobInfo = null; break;
+                case 'f1-card-jobValue': appState.feature1Data.jobValueResult = null; break;
+                case 'f1-card-personality': appState.feature1Data.personalityResult = null; break;
+                case 'f1-card-workStyle': appState.feature1Data.workStyleResult = null; break;
+                case 'f1-card-experience': appState.feature1Data.socialExperiences = []; break;
+            }
+            saveUserData(appState.currentUser, appState.feature1Data);
+            const container = document.getElementById('feature1-section');
+            container.innerHTML = getFeature1HTML();
+            updateF1CardStates();
+            bindFeature1Listeners();
+        }
+        function getFeature1HTML() {
+            return `
+                <div class="text-center mb-10">
+                    <h2 class="text-3xl font-bold">자기 분석 & 프로필 생성</h2>
+                    <p class="text-gray-600 mt-2">자신을 깊이 이해하는 것이 성공적인 취업의 첫걸음입니다. 아래 단계를 통해 자신을 탐색해보세요.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div id="f1-card-job" class="f1-main-card bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow flex flex-col justify-between cursor-pointer">
+                        <div><h3 class="font-bold text-xl mb-2">1. 희망 직무/산업</h3><p class="text-gray-600">나의 커리어 목표와 방향을 설정합니다.</p></div>
+                    </div>
+                    <div id="f1-card-jobValue" class="f1-main-card bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow flex flex-col justify-between cursor-pointer">
+                        <div><h3 class="font-bold text-xl mb-2">2. 직무 가치 진단</h3><p class="text-gray-600">내가 중요하게 생각하는 직업 가치를 찾습니다.</p></div>
+                    </div>
+                    <div id="f1-card-personality" class="f1-main-card bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow flex flex-col justify-between cursor-pointer">
+                        <div><h3 class="font-bold text-xl mb-2">3. 개인 성격 진단</h3><p class="text-gray-600">나의 타고난 성격적 강점을 파악합니다.</p></div>
+                    </div>
+                    <div id="f1-card-workStyle" class="f1-main-card bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow flex flex-col justify-between cursor-pointer">
+                        <div><h3 class="font-bold text-xl mb-2">4. 업무 성향 진단</h3><p class="text-gray-600">팀 안에서 나의 역할과 시너지를 알아봅니다.</p></div>
+                    </div>
+                    <div id="f1-card-experience" class="f1-main-card bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow md:col-span-2 lg:col-span-1 flex flex-col justify-between cursor-pointer">
+                        <div><h3 class="font-bold text-xl mb-2">5. 나의 사회 경험</h3><p class="text-gray-600">흩어져 있는 나의 경험들을 자산으로 만듭니다.</p></div>
+                    </div>
+                </div>
+            `;
+        }
+        function getF1JobHTML() { /* ... 이 함수 내용은 변경 없음 ... */ return ` <div class="bg-white p-6 sm:p-8 rounded-lg shadow-lg"> <h3 class="font-bold text-2xl mb-6">1. 희망 직무/산업 설정</h3> <div class="space-y-8"> ${((t, o, n, a, l) => { const e = o.map((t => `<div class="selection-box" data-value="${t}">${t}</div>`)).join(""); return ` <div> <label class="block text-sm font-medium text-gray-700 mb-2">${t} <span class="text-xs text-gray-500">${l}</span></label> <div id="${n}" class="flex flex-wrap items-center gap-1 p-2 border rounded-md bg-gray-50"> ${e} </div> <div class="mt-2 flex items-center gap-2"> <label for="${n}-other" class="text-sm font-medium text-gray-700 whitespace-nowrap">기타:</label> <input id="${n}-other" type="text" class="w-full rounded-md border-gray-300 text-sm shadow-sm" placeholder="선택지에 없는 경우 직접 입력"> </div> </div>` })("희망 산업군", industries, "f1-industry-container", 2, "최대 2개 선택")} ${((t, o, n, a, l) => { const e = o.map((t => `<div class="selection-box" data-value="${t}">${t}</div>`)).join(""); return ` <div> <label class="block text-sm font-medium text-gray-700 mb-2">${t} <span class="text-xs text-gray-500">${l}</span></label> <div id="${n}" class="flex flex-wrap items-center gap-1 p-2 border rounded-md bg-gray-50"> ${e} </div> <div class="mt-2 flex items-center gap-2"> <label for="${n}-other" class="text-sm font-medium text-gray-700 whitespace-nowrap">기타:</label> <input id="${n}-other" type="text" class="w-full rounded-md border-gray-300 text-sm shadow-sm" placeholder="선택지에 없는 경우 직접 입력"> </div> </div>` })("희망 직종", jobCategories, "f1-job-category-container", 3, "최대 3개 선택")} ${((t, o, n, a, l) => { const e = o.map((t => `<div class="selection-box" data-value="${t}">${t}</div>`)).join(""); return ` <div> <label class="block text-sm font-medium text-gray-700 mb-2">${t} <span class="text-xs text-gray-500">${l}</span></label> <div id="${n}" class="flex flex-wrap items-center gap-1 p-2 border rounded-md bg-gray-50"> ${e} </div> <div class="mt-2 flex items-center gap-2"> <label for="${n}-other" class="text-sm font-medium text-gray-700 whitespace-nowrap">기타:</label> <input id="${n}-other" type="text" class="w-full rounded-md border-gray-300 text-sm shadow-sm" placeholder="선택지에 없는 경우 직접 입력"> </div> </div>` })("희망 직무", jobDuties, "f1-job-duties-container", 4, "최대 4개 선택")} ${((t, o, n, a, l) => { const e = o.map((t => `<div class="selection-box" data-value="${t}">${t}</div>`)).join(""); return ` <div> <label class="block text-sm font-medium text-gray-700 mb-2">${t} <span class="text-xs text-gray-500">${l}</span></label> <div id="${n}" class="flex flex-wrap items-center gap-1 p-2 border rounded-md bg-gray-50"> ${e} </div> <div class="mt-2 flex items-center gap-2"> <label for="${n}-other" class="text-sm font-medium text-gray-700 whitespace-nowrap">기타:</label> <input id="${n}-other" type="text" class="w-full rounded-md border-gray-300 text-sm shadow-sm" placeholder="선택지에 없는 경우 직접 입력"> </div> </div>` })("전공", majors, "f1-major-container", 1, "전공을 선택하거나 직접 입력하세요")} <div class="flex justify-end space-x-2 pt-4 border-t"> <button id="f1-back-btn" class="bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600">이전</button> <button id="f1-job-save-btn" class="pastel-bg-primary pastel-bg-primary-hover text-white py-2 px-4 rounded-md">저장하기</button> </div> </div> </div> `; }
+        function getF1JobResultHTML(jobInfo) { /* ... 이 함수 내용은 변경 없음 ... */ return ` <div class="bg-white p-6 sm:p-8 rounded-lg shadow-lg"> <h3 class="font-bold text-2xl mb-8 text-center">희망 직무/산업 설정 결과</h3> <div class="prose max-w-none"> <div class="result-card bg-gray-50 p-6"> ${((t, o) => { if (!o || 0 === o.length) return ""; return ` <div class="mb-6"> <h4 class="font-semibold text-lg text-gray-800 border-b pb-2 mb-3">${t}</h4> <ul class="list-disc list-inside text-gray-700 space-y-1"> ${o.map((t => `<li>${t}</li>`)).join("")} </ul> </div>` })("희망 산업군", jobInfo.industry)} ${((t, o) => { if (!o || 0 === o.length) return ""; return ` <div class="mb-6"> <h4 class="font-semibold text-lg text-gray-800 border-b pb-2 mb-3">${t}</h4> <ul class="list-disc list-inside text-gray-700 space-y-1"> ${o.map((t => `<li>${t}</li>`)).join("")} </ul> </div>` })("희망 직종", jobInfo.jobCategory)} ${((t, o) => { if (!o || 0 === o.length) return ""; return ` <div class="mb-6"> <h4 class="font-semibold text-lg text-gray-800 border-b pb-2 mb-3">${t}</h4> <ul class="list-disc list-inside text-gray-700 space-y-1"> ${o.map((t => `<li>${t}</li>`)).join("")} </ul> </div>` })("희망 직무", jobInfo.jobDuties)} ${((t, o) => { if (!o || 0 === o.length) return ""; return ` <div class="mb-6"> <h4 class="font-semibold text-lg text-gray-800 border-b pb-2 mb-3">${t}</h4> <ul class="list-disc list-inside text-gray-700 space-y-1"> ${o.map((t => `<li>${t}</li>`)).join("")} </ul> </div>` })("전공", jobInfo.major)} </div> </div> <div class="flex justify-end mt-6"> <button id="f1-back-btn" class="bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600">돌아가기</button> </div> </div> `; }
+        function getF1ExperienceHTML() { /* ... 이 함수 내용은 변경 없음 ... */ return ` <div class="bg-white rounded-lg shadow-lg"> <div class="p-6 sm:p-8"> <h3 class="text-2xl font-bold mb-6 border-b pb-4">5. 나의 사회 경험 기록하기</h3> <div class="grid grid-cols-1 lg:grid-cols-2 gap-8"> <div class="lg:col-span-1 space-y-6"> <div> <label for="f1-exp-type" class="form-label"> <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" /></svg> 경험 유형 </label> <select id="f1-exp-type" class="w-full rounded-md border-gray-300 shadow-sm"> <option>직장 경력</option><option>인턴</option><option>아르바이트</option><option>동아리 활동</option><option>수상 경력</option><option value="기타">기타 (직접입력)</option> </select> <input id="f1-exp-type-other" type="text" placeholder="경험 유형 직접입력" class="hidden w-full rounded-md border-gray-300 shadow-sm mt-2"> </div> <div> <label for="f1-exp-org" class="form-label"> <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" /></svg> 조직명 / 활동명 </label> <input id="f1-exp-org" type="text" placeholder="예: ReadyJob 컴퍼니, 마케팅 공모전" class="w-full rounded-md border-gray-300 placeholder:text-gray-400"> </div> <div> <label class="form-label"> <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0h18M-4.5 12h22.5" /></svg> 수행 기간 </label> <div class="grid grid-cols-2 gap-2 items-center"> <select id="f1-exp-start-year" class="w-full rounded-md border-gray-300"></select> <select id="f1-exp-start-month" class="w-full rounded-md border-gray-300"></select> <select id="f1-exp-end-year" class="w-full rounded-md border-gray-300"></select> <select id="f1-exp-end-month" class="w-full rounded-md border-gray-300"></select> </div> <div class="mt-2 flex items-center"> <input id="f1-exp-present" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"> <label for="f1-exp-present" class="ml-2 block text-sm text-gray-900">현재 활동중</label> </div> </div> <div> <label class="form-label"> <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg> 주요 활동 및 과업 </label> <div id="f1-exp-tasks-container"></div> <button type="button" id="add-task-btn" class="add-task-btn"> <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg> 항목 추가 </button> </div> <div> <label for="f1-exp-notes" class="form-label"> <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m5.231 13.481L15 17.25m-4.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9zm3.75 11.625a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg> 활동 소감 및 배운 점 <span class="text-sm font-normal text-gray-500 ml-2">(선택사항)</span> </label> <textarea id="f1-exp-notes" rows="3" placeholder="활동을 통해 배우고 느낀 점을 자유롭게 작성해주세요." class="w-full rounded-md border-gray-300 placeholder:text-gray-400"></textarea> </div> <button id="f1-add-exp-btn" class="w-full pastel-bg-primary pastel-bg-primary-hover text-white py-3 rounded-md font-semibold text-lg">경험 추가하기</button> </div> <div class="lg:col-span-1"> <h4 class="text-xl font-bold mb-4">나의 경험 목록</h4> <div id="f1-experience-list" class="space-y-4 max-h-[600px] overflow-y-auto pr-2"> <p class="text-gray-500 text-center py-8">아직 추가된 경험이 없습니다.</p> </div> </div> </div> </div> <div class="bg-gray-50 px-6 py-4 flex justify-end"> <button id="f1-back-btn" class="bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600">메인으로 돌아가기</button> </div> </div> `; }
+        function getQuizHTML(quizType) { /* ... 이 함수 내용은 변경 없음 ... */ const quizzes = { jobValue: { title: "2. 직무 가치 진단", description: "직업 선택 시 중요하게 생각하는 가치에 대해 답해주세요.", questions: ["난이도 있는 과제를 맡으면 의욕이 크게 오른다.", "성과가 수치나 지표로 확인될 때 일의 재미가 커진다.", "결과 책임이 분명한 역할에 끌린다.", "내 기여가 공식 발표나 리포트에 명시되는 환경이 좋다.", "전문가로 평가받고 영향력을 넓히는 것이 중요하다.", "성과에 대한 피드백이 빠르고 공개적으로 주어지면 동기가 생긴다.", "업무 우선순위를 내가 설계할 수 있어야 몰입한다.", "세부 방법까지 지시받기보다 결과만 위임받는 것을 선호한다.", "스스로 결정한 계획을 스스로 조정하며 일하고 싶다.", "새로운 도구나 방식을 시험해보는 업무가 즐겁다.", "문제를 기존 규칙대로 처리하기보다 다른 각도에서 풀어보려 한다.", "작은 개선이라도 실험해 보고 학습하는 문화를 원한다.", "변동이 적고 예측 가능한 일정과 보상이 중요하다.", "안전하고 과부하가 적절히 관리되는 환경에서 최고의 성과를 낸다.", "장기 계획이 가능한 직무를 선호한다.", "서로 돕는 팀 문화에서 일할 때 성과가 잘 난다.", "필요한 자원과 도움을 요청했을 때 즉시 연결되는 체계를 중시한다.", "동료와 신뢰 관계를 쌓는 시간이 업무만큼 중요하다."] }, personality: { title: "3. 개인 성격 진단", description: "자신을 가장 잘 설명하는 문항에 가깝게 답해주세요.", questions: ["나는 새로운 동료와 빠르게 친해질 수 있다.", "사람들과 어울리면 에너지가 생긴다.", "회의나 모임에서 의견을 적극적으로 말한다.", "낯선 상황에서도 쉽게 대화를 시작한다.", "동료가 힘들어하면 도와주고 싶은 마음이 든다.", "상대방의 감정을 이해하려 노력한다.", "협업 시 타인의 의견을 존중한다.", "갈등 상황에서 상대의 입장을 먼저 들어본다.", "맡은 일은 끝까지 책임지고 완수한다.", "작은 일이라도 꼼꼼히 처리하려 한다.", "마감 기한을 철저히 지킨다.", "결과에 대한 책임을 회피하지 않는다.", "스트레스 상황에서도 침착하게 대응한다.", "예기치 못한 변화가 와도 쉽게 무너지지 않는다.", "중요한 순간에 감정을 잘 조절한다.", "압박 속에서도 차분함을 유지한다.", "새로운 아이디어를 떠올리는 것을 즐긴다.", "낯선 방식이라도 시도해보려 한다.", "기존 방식을 개선할 방법을 고민한다.", "창의적인 아이디어를 실행에 옮기려 한다."] }, workStyle: { title: "4. 업무 성향 진단", description: "업무 중 특정 상황에서 당신이 할 행동과 가장 가까운 것을 선택해주세요.", questions: [{ scenario: "Q1. 신규 프로젝트 팀에 배정되었습니다. 당신이 가장 먼저 하고 싶은 일은 무엇인가요?", options: [{ text: "프로젝트의 목표와 최종 결과물을 명확히 정의하고, 내가 주도적으로 리딩한다.", value: "주도지향성" }, { text: "팀원들과 아이스브레이킹 시간을 갖고, 서로의 강점과 역할을 파악한다.", value: "협력지향성" }, { text: "전체 프로젝트의 일정과 세부적인 업무 프로세스를 먼저 설계한다.", value: "체계지향성" }, { text: "일단 가볍게 시작해보고, 진행하면서 구체적인 계획과 역할을 정립해나간다.", value: "유연지향성" }, { text: "이 프로젝트에서 시도해볼 만한 새로운 기술이나 창의적인 방법은 없는지 리서치한다.", value: "혁신지향성" }] }, { scenario: "Q2. 팀 프로젝트 마감이 임박했는데, 예상치 못한 문제가 발생했습니다. 당신의 첫 번째 행동은 무엇인가요?", options: [{ text: "즉시 회의를 소집하고, 문제 해결을 위한 역할 분담을 빠르게 결정한다.", value: "주도지향성" }, { text: "당황한 팀원들을 진정시키고, 함께 해결 방안을 논의하자고 제안한다.", value: "협력지향성" }, { text: "문제의 원인을 단계별로 분석하고, 계획에 차질이 없도록 대안을 마련한다.", value: "체계지향성" }, { text: "일단 문제를 빠르게 해결할 수 있는 임시방편을 찾아 적용하고, 상황에 맞춰 대응한다.", value: "유연지향성" }, { text: "이 문제를 계기로 기존 프로세스 자체를 개선할 수 있는 새로운 방법을 모색한다.", value: "혁신지향성" }] }, { scenario: "Q3. 팀 회의 중, 당신의 의견과 다른 팀원의 의견이 충돌했습니다. 어떻게 대응하시겠습니까?", options: [{ text: "논의가 길어지지 않도록 최종 결정권자에게 의견을 제시하고, 빠르게 결정을 내리도록 이끈다.", value: "주도지향성" }, { text: "상대방의 의견을 먼저 경청하고, 공통의 목표를 위해 절충안을 찾으려 노력한다.", value: "협력지향성" }, { text: "각 의견의 장단점을 데이터에 기반하여 객관적으로 비교하고, 가장 합리적인 안을 선택하자고 설득한다.", value: "체계지향성" }, { text: "상황이 변했으니 두 의견 모두를 잠시 보류하고, 현재 상황에 더 적합한 제3의 대안을 찾아보자고 제안한다.", value: "유연지향성" }, { text: "두 의견을 결합하거나 완전히 새로운 관점에서 문제를 해결할 창의적인 아이디어를 제시한다.", value: "혁신지향성" }] }, { scenario: "Q4. 당신에게 중요하고 복잡한 업무가 주어졌습니다. 선호하는 업무 방식은 무엇인가요?", options: [{ text: "업무의 최종 목표와 권한을 위임받아, 내 방식대로 책임지고 처리한다.", value: "주도지향성" }, { text: "관련 동료들과 정기적으로 진행 상황을 공유하고, 피드백을 받으며 함께 진행한다.", value: "협력지향성" }, { text: "업무를 가장 작은 단위로 나누고, 체크리스트를 만들어 순서대로 완벽하게 처리한다.", value: "체계지향성" }, { text: "상황 변화에 즉시 대응할 수 있도록, 여러 가지 대안을 염두에 두고 유연하게 처리한다.", value: "유연지향성" }, { text: "정해진 방식에 얽매이지 않고, 더 효율적인 방법이 있다면 과감하게 시도하며 진행한다.", value: "혁신지향성" }] }, { scenario: "Q5. 프로젝트가 성공적으로 끝났습니다. 당신에게 가장 큰 보람을 느끼게 하는 것은 무엇인가요?", options: [{ text: "나의 리더십과 결정 덕분에 프로젝트가 성공했다는 인정을 받는 것.", value: "주도지향성" }, { text: "힘든 과정을 함께 이겨낸 동료들과 성취감을 나누고, 팀워크가 더 단단해진 것.", value: "협력지향성" }, { text: "처음에 세웠던 꼼꼼한 계획이 차질 없이 실행되어 완벽한 결과로 이어진 것.", value: "체계지향성" }, { text: "예상치 못한 위기들을 유연하게 대처하여 결국 좋은 결과로 만들어낸 과정.", value: "유연지향성" }, { text: "프로젝트에 적용했던 새로운 아이디어가 성공적인 결과로 이어진 것.", value: "혁신지향성" }] }, { scenario: "Q6. 지루하고 반복적인 업무를 처리해야 할 때, 당신의 방식은 무엇인가요?", options: [{ text: "다른 중요한 업무에 방해되지 않도록, 집중해서 빠르게 끝내버린다.", value: "주도지향성" }, { text: "동료와 함께 이야기하며 즐겁게 하거나, 우리 팀 전체의 효율을 높일 방법을 고민한다.", value: "협력지향성" }, { text: "실수하지 않도록 정해진 절차에 따라 꼼꼼하게 처리하고, 체크리스트를 만든다.", value: "체계지향성" }, { text: "업무의 우선순위를 고려해, 다른 급한 일이 생기면 잠시 미뤄두고 유연하게 처리한다.", value: "유연지향성" }, { text: "이 작업을 더 빠르고 쉽게 할 수 있는 자동화 방법이나 새로운 툴은 없는지 찾아본다.", value: "혁신지향성" }] }, { scenario: "Q7. 동료로부터 당신의 업무 방식에 대한 예상치 못한 피드백(지적)을 받았습니다. 당신의 반응은?", options: [{ text: "피드백을 준 동료에게 감사함을 표하고, 개선점을 찾아 다음 업무에 주도적으로 적용한다.", value: "주도지향성" }, { text: "기분 상할 수 있지만, 팀의 성과를 위한 조언이라 생각하고 열린 마음으로 대화한다.", value: "협력지향성" }, { text: "피드백의 내용을 객관적으로 분석하고, 개선할 부분이 있다면 즉시 계획에 반영한다.", value: "체계지향성" }, { text: "피드백을 준 동료의 의도와 현재 상황을 종합적으로 고려하여 유연하게 대처한다.", value: "유연지향성" }, { text: "나와 다른 관점의 피드백을 새로운 아이디어를 얻을 기회로 생각한다.", value: "혁신지향성" }] }, { scenario: "Q8. 상사로부터 업무 지시를 받았지만, 목표나 방법이 매우 모호합니다. 어떻게 행동하겠습니까?", options: [{ text: "즉시 상사에게 찾아가 질문하여 업무의 목표(Goal), 역할(Role), 결과물(Output)을 명확히 한다.", value: "주도지향성" }, { text: "이 업무를 경험해봤을 동료에게 먼저 다가가 조언을 구하고, 함께 방향을 논의한다.", value: "협력지향성" }, { text: "모호한 부분을 명확히 하기 위해, 업무의 배경, 범위, 제약 조건 등을 체계적으로 정리하여 질문한다.", value: "체계지향성" }, { text: "일단 내가 이해한 방향으로 업무를 시작하고, 중간 결과물을 만들어 공유하며 방향을 맞춰나간다.", value: "유연지향성" }, { text: "이 모호한 상황을 오히려 기회로 삼아, 기존에 없던 창의적인 방식으로 업무를 정의하고 시도해본다.", value: "혁신지향성" }] }] } }; let questionsHTML = ""; const quizData = quizzes[quizType]; if ("workStyle" === quizType) questionsHTML = quizData.questions.map(((t, e) => ` <div class="scenario-question"> <p>${t.scenario}</p> <div> ${t.options.map(((t, o) => ` <label class="scenario-option"> <input type="radio" name="q${e}" value="${t.value}"> <span>${t.text}</span> </label> `)).join("")} </div> </div> `)).join(""); else if ("personality" === quizType) { const t = ["😠", "😟", "🤔", "😊", "😄"]; questionsHTML = quizData.questions.map(((o, e) => ` <div class="mb-4 p-4 border rounded-lg bg-white shadow-sm"> <p class="font-medium mb-4 text-gray-800 text-center">${e + 1}. ${o}</p> <div class="quiz-options-container"> <span class="text-sm text-gray-500 hidden sm:inline">전혀 아니다</span> <div class="flex-grow flex justify-center items-center space-x-2 sm:space-x-4 mx-4"> ${t.map(((t, i) => ` <div> <input type="radio" name="q${e}" id="q${e}v${i + 1}" value="${i + 1}"> <label for="q${e}v${i + 1}">${t}</label> </div>`)).join("")} </div> <span class="text-sm text-gray-500 hidden sm:inline">매우 그렇다</span> </div> </div> `)).join("") } else questionsHTML = quizData.questions.map(((t, e) => ` <div class="mb-4 p-4 border rounded-lg bg-white shadow-sm"> <p class="font-medium mb-4 text-gray-800 text-center">${e + 1}. ${t}</p> <div class="quiz-options-container"> <span class="text-sm text-gray-500">전혀 아니다</span> <div class="flex-grow flex justify-center items-center space-x-2 sm:space-x-4 mx-4"> ${[1, 2, 3, 4, 5].map((t => ` <div> <input type="radio" name="q${e}" id="q${e}v${t}" value="${t}"> <label for="q${e}v${t}" class="w-11 h-11 text-base">${t}</label> </div>`)).join("")} </div> <span class="text-sm text-gray-500">매우 그렇다</span> </div> </div> `)).join(""); return ` <div class="bg-gray-50 p-6 sm:p-8 rounded-lg shadow-inner"> <h3 class="font-bold text-2xl mb-2">${quizData.title}</h3> <p class="text-gray-600 mb-8">${quizData.description}</p> <form id="f1-quiz-form" data-quiz-type="${quizType}"> ${questionsHTML} <div class="flex justify-end space-x-2 mt-8"> <button type="button" id="f1-back-btn" class="bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600">이전</button> <button type="submit" class="pastel-bg-primary pastel-bg-primary-hover text-white py-2 px-4 rounded-md">결과 보기</button> </div> </form> </div> ` }
+        function getResultHTML(quizType) { /* ... 이 함수 내용은 변경 없음 ... */ return ` <div id="f1-result-container" class="bg-gray-50 p-6 sm:p-8 rounded-lg shadow-inner"> <h2 class="font-bold text-3xl mb-6 text-center">${{ jobValue: "직무 가치 진단 결과", personality: "개인 성격 진단 결과", workStyle: "업무 성향 진단 결과" }[quizType]}</h2> <div id="f1-loader" class="flex justify-center my-8"><div class="loader"></div></div> <div id="f1-result-content" class="prose max-w-none hidden"></div> <div class="flex justify-end space-x-2 mt-8"> <button id="f1-back-btn" class="bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600">이전</button> <button id="f1-download-btn" class="bg-teal-500 text-white py-2 px-4 rounded-md hover:bg-teal-600 hidden">HTML로 저장</button> </div> </div>` }
+        function getFeature2HTML() { /* ... 이 함수 내용은 변경 없음 ... */ return ` <h2 class="text-3xl font-bold mb-2">AI 자소서 생성</h2> <p class="text-gray-600 mb-8">'자기 분석 & 프로필 생성'에 입력된 정보를 바탕으로 AI가 매력적인 자소서를 만들어 드립니다.</p> <div class="bg-white p-6 rounded-lg shadow mb-8 space-y-8"> <div> <h3 class="font-bold text-lg mb-4 text-gray-800">1. 기본 설정</h3> <div class="grid grid-cols-1 md:grid-cols-2 gap-6"> <div> <label class="block text-sm font-medium text-gray-700">글자수</label> <select id="f2-char-count" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"> <option>100자 이내</option><option>200자 이내</option><option>300자 이내</option><option>400자 이내</option><option>500자 이내</option><option>600자 이내</option><option>700자 이내</option><option>800자 이내</option><option>900자 이내</option><option>1000자 이내</option> </select> </div> <div> <label class="block text-sm font-medium text-gray-700">작성 스타일</label> <select id="f2-style" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"> <option>서술식</option><option>개조식</option> </select> </div> </div> </div> <div> <h3 class="font-bold text-lg mb-4 text-gray-800">2. 문항 유형 선택</h3> <div id="f2-category-container" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4"> ${((t, o, n) => ` <div class="category-card" data-category="${t}"> ${o} <span class="category-card-text">${n}</span> </div>`)("지원동기", '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>', "지원동기")} ${((t, o, n) => ` <div class="category-card" data-category="${t}"> ${o} <span class="category-card-text">${n}</span> </div>`)("조직이해", '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h6.375M9 12h6.375M9 17.25h6.375M12 21V3" /></svg>', "조직이해")} ${((t, o, n) => ` <div class="category-card" data-category="${t}"> ${o} <span class="category-card-text">${n}</span> </div>`)("성장과정", '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-3.75-.607m3.75.607V11.25m-3.75 0l-3.75 0" /></svg>', "성장과정")} ${((t, o, n) => ` <div class="category-card" data-category="${t}"> ${o} <span class="category-card-text">${n}</span> </div>`)("개인 특성 및 역량", '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>', "개인역량")} ${((t, o, n) => ` <div class="category-card" data-category="${t}"> ${o} <span class="category-card-text">${n}</span> </div>`)("직무역량", '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21v-4.5m0 4.5h4.5m-4.5 0L9 15M21 3.75v4.5m0-4.5h-4.5m4.5 0L15 9" /></svg>', "직무역량")} ${((t, o, n) => ` <div class="category-card" data-category="${t}"> ${o} <span class="category-card-text">${n}</span> </div>`)("소통역량", '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 20.25c4.97 0 9-3.694 9-8.25s-4.03-8.25-9-8.25S3 7.056 3 12s4.03 8.25 9 8.25z" /></svg>', "소통역량")} ${((t, o, n) => ` <div class="category-card" data-category="${t}"> ${o} <span class="category-card-text">${n}</span> </div>`)("기타", '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" /></svg>', "직접입력")} </div> </div> <div id="f2-question-detail-container" class="opacity-0 transition-opacity duration-300"> <h3 class="font-bold text-lg mb-4 text-gray-800">3. 세부 문항 선택</h3> <select id="f2-question-selection" class="hidden w-full rounded-md border-gray-300 shadow-sm"></select> <input id="f2-question-input" type="text" class="hidden w-full rounded-md border-gray-300 shadow-sm" placeholder="자소서 문항을 직접 입력하세요."> </div> <button id="f2-generate-btn" class="w-full pastel-bg-primary pastel-bg-primary-hover text-white py-2.5 rounded-md font-bold text-lg">자소서 생성하기 (최대 10개)</button> </div> <div id="f2-loader" class="hidden justify-center my-4"><div class="loader"></div></div> <div id="f2-result-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div> `; }
+        function generateJobValueReport(answers) { /* ... 이 함수 내용은 변경 없음 ... */ const factors = { 성취: (parseInt(answers.q0) + parseInt(answers.q1) + parseInt(answers.q2)) / 3, 인정: (parseInt(answers.q3) + parseInt(answers.q4) + parseInt(answers.q5)) / 3, 자율: (parseInt(answers.q6) + parseInt(answers.q7) + parseInt(answers.q8)) / 3, 혁신: (parseInt(answers.q9) + parseInt(answers.q10) + parseInt(answers.q11)) / 3, 환경: (parseInt(answers.q12) + parseInt(answers.q13) + parseInt(answers.q14)) / 3, 관계: (parseInt(answers.q15) + parseInt(answers.q16) + parseInt(answers.q17)) / 3 }; const mainValues = { "성장 가치": (factors.성취 + factors.인정) / 2..toFixed(1), "도전 가치": (factors.자율 + factors.혁신) / 2..toFixed(1), "안정 가치": (factors.환경 + factors.관계) / 2..toFixed(1) }; const sortedValues = Object.entries(mainValues).sort((([, a], [, b]) => b - a)); const primaryValue = sortedValues[0][0]; const primaryScore = sortedValues[0][1]; return ` <div class="result-card"> <h3>📊 총평</h3> <p>진단 결과, 당신은 <strong>'${primaryValue}'</strong>를 가장 중요하게 생각하는 유형입니다. (평균 ${primaryScore}점) 이는 직업을 통해 '${{ "성장 가치": "가시적인 성과를 내고 전문가로 성장하는 것", "도전 가치": "업무에 대한 주도권을 갖고 새로운 시도를 하는 것", "안정 가치": "안정적인 환경에서 동료들과 신뢰를 쌓으며 일하는 것" }[primaryValue]}'에서 가장 큰 동기부여와 만족감을 얻는다는 것을 의미합니다. 자신의 핵심 가치를 이해하고, 이를 충족시킬 수 있는 기업과 직무를 선택하는 것이 성공적인 커리어의 첫걸음입니다. 자소서나 면접에서 '왜 이 직무를 선택했는가'라는 질문에 자신의 핵심 가치를 연결하여 답변한다면 진정성 있는 스토리를 만들 수 있습니다.</p> </div> <div class="result-card"> <h3>⭐ 강점 및 보완점</h3> <p><strong>강점:</strong> 높은 '${primaryValue}'는 해당 가치가 보장되는 환경에서 누구보다 높은 몰입도와 성과를 낼 수 있는 강력한 동력이 됩니다. 자신의 가치와 일치하는 목표가 주어졌을 때, 열정적으로 업무를 수행하며 빠르게 성장할 수 있습니다. 이는 힘든 상황에서도 포기하지 않고 나아가게 하는 내적 동기로 작용하여, 장기적인 커리어 성공에 긍정적인 영향을 미칩니다.</p> <p><strong>보완점:</strong> 반면, '${primaryValue}'가 충족되지 않는 환경에서는 상대적으로 스트레스를 받거나 동기부여가 저하될 수 있습니다. 예를 들어, '${primaryValue}'가 높은 사람이 '${{ "성장 가치": "성장이나 인정이 더딘 조직", "도전 가치": "규율이 엄격하고 변화가 적은 조직", "안정 가치": "경쟁이 치열하고 개인 성과만 강조하는 조직" }[primaryValue]}'에 속할 경우 어려움을 겪을 수 있습니다. 따라서 지원하려는 기업의 문화와 가치 체계를 미리 파악하는 것이 중요합니다. 또한, 여러 가치 간의 균형을 맞추려는 노력도 필요합니다. 예를 들어 '성장'을 중시하더라도 '안정'의 가치를 완전히 무시하면 번아웃에 취약해질 수 있습니다.</p> </div> <div class="result-card"> <h3>📈 3대 직무 가치 그래프</h3> <p>아래 그래프는 당신의 3가지 주요 직무 가치에 대한 선호도를 보여줍니다. 점수가 높을수록 해당 가치를 더 중요하게 생각한다는 의미입니다.</p> <div class="max-w-xl mx-auto h-64 md:h-80"><canvas id="jobValueChart"></canvas></div> </div> <div class="result-card"> <h3>💡 추천 직무 및 기업 문화</h3> <p>당신의 최우선 가치인 <strong>'${primaryValue}'</strong>를 고려할 때, 다음과 같은 직무와 환경을 추천합니다. 이는 당신의 잠재력을 최대한 발휘하고 높은 직업 만족도를 얻는 데 도움이 될 것입니다.</p> <ul> ${{ "성장 가치": "<li><strong>추천 직무:</strong> 성과 기반 인센티브가 명확한 영업/마케팅, 컨설팅, IT 개발 직군 또는 전문성을 키울 수 있는 R&D, 데이터 분석 직무. 명확한 목표(KPI)가 주어지고, 그 결과를 통해 역량을 증명할 수 있는 일에서 큰 성취감을 느낄 것입니다.</li><li><strong>추천 환경:</strong> 개인의 성과를 투명하게 공개하고 공정하게 보상하는 문화, 역량 강화를 위한 교육 및 성장 지원이 활발한 기업. 사내 스터디나 컨퍼런스 참여를 장려하는 곳이라면 더욱 좋습니다.</li>", "도전 가치": "<li><strong>추천 직무:</strong> 독립적으로 프로젝트를 리드할 수 있는 PM/PO, 창의성이 중요한 기획/디자인 직군, 혹은 변화가 빠른 스타트업 환경. 정해진 방식보다 새로운 방식을 시도하고 개선하는 과정에서 즐거움을 느낍니다.</li><li><strong>추천 환경:</strong> 마이크로매니징이 적고, 결과에 대한 책임과 권한을 함께 부여하는 수평적인 조직 문화. 실패를 용인하고 실험을 장려하는 '심리적 안정감'이 보장되는 곳에서 잠재력을 폭발시킬 수 있습니다.</li>", "안정 가치": "<li><strong>추천 직무:</strong> 프로세스가 중요한 공공/금융 분야, 안정적인 서비스 운영 직군, 또는 팀워크가 핵심인 인사/총무/교육 직무. 예측 가능한 환경에서 동료들과 협력하며 꾸준히 성과를 쌓아나가는 일에 적합합니다.</li><li><strong>추천 환경:</strong> 장기적인 고용 안정을 보장하고, 동료 간의 협업과 신뢰를 강조하는 공동체적인 기업 문화. 경쟁보다는 협력을, 개인의 영광보다는 팀의 성공을 중시하는 곳에서 편안함을 느낍니다.</li>" }[primaryValue]} </ul> </div> <script> new Chart(document.getElementById('jobValueChart').getContext('2d'), { type: 'bar', data: { labels: ${JSON.stringify(Object.keys(mainValues))}, datasets: [{ label: '직무 가치 점수', data: ${JSON.stringify(Object.values(mainValues))}, backgroundColor: ['rgba(79, 70, 229, 0.7)', 'rgba(34, 197, 94, 0.7)', 'rgba(249, 115, 22, 0.7)'], }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 5 } }, plugins: { legend: { display: false } } } }); <\/script> `; }
+        function generatePersonalityReport(answers) { /* ... 이 함수 내용은 변경 없음 ... */ const scores = { 사회관계성: 0, 공감배려성: 0, 성실책임성: 0, 정서안정성: 0, 창의탐구성: 0 }; const factorKeys = Object.keys(scores); for (let i = 0; i < 20; i++)scores[factorKeys[Math.floor(i / 4)]] += parseInt(answers[`q${i}`] || 1); const sortedPersonality = Object.entries(scores).sort((([, a], [, b]) => b - a)); const top2 = [sortedPersonality[0], sortedPersonality[1]]; const bottom2 = [sortedPersonality[4], sortedPersonality[3]]; const primaryPersonality = sortedPersonality[0][0]; return ` <div class="result-card"> <h3>📊 총평</h3> <p>당신의 성격에서 가장 두드러지는 특성은 <strong>'${primaryPersonality}'</strong>입니다. 이는 당신이 생각하고 행동하는 방식의 핵심적인 부분으로, 직무와 조직 생활 전반에 영향을 미칩니다. 아래 분석을 통해 자신의 강점을 극대화하고 보완점을 관리함으로써 잠재력을 최대한 발휘할 수 있는 방법을 확인해보세요. 면접에서 "당신의 장점은 무엇인가요?" 라는 질문에 '${primaryPersonality}'의 긍정적인 측면을 구체적인 경험과 함께 제시하면 좋습니다.</p> </div> <div class="result-card"> <h3>📈 개인 성격 진단 그래프</h3> <p>5가지 성격 특성의 분포를 확인해보세요. (총점 20점)</p> <div class="max-w-xl mx-auto h-64 md:h-96"><canvas id="personalityChart"></canvas></div> </div> <div class="result-card"> <h3>⭐ 당신의 강점 (Top 2)</h3> ${top2.map((([key, score]) => { let feedback = ""; switch (key) { case "사회관계성": feedback = "새로운 사람들과 쉽게 어울리고 긍정적인 관계를 형성하는 데 능숙합니다. 당신의 활기찬 에너지는 팀에 활력을 불어넣고, 폭넓은 네트워크는 새로운 기회를 가져오는 중요한 자산이 될 수 있습니다. 특히 외부 고객이나 파트너와의 협업이 중요한 직무에서 탁월한 역량을 발휘할 것입니다. 당신은 조직의 '에너지 드링크'와 같은 존재로, 침체된 분위기를 바꾸고 팀원들이 서로 소통하도록 격려하는 역할을 자연스럽게 수행합니다. 이러한 강점은 단순한 친화력을 넘어, 비즈니스 기회를 포착하고 갈등을 예방하는 핵심 역량이 될 수 있습니다."; break; case "공감배려성": feedback = "타인의 감정을 깊이 이해하고 존중하며, 팀의 화합을 중요하게 생각합니다. 갈등 상황에서 중재자 역할을 하거나, 동료가 어려움을 겪을 때 먼저 손을 내미는 따뜻한 마음을 가졌습니다. 이러한 강점은 팀워크를 강화하고 긍정적인 조직 문화를 만드는 데 핵심적인 역할을 합니다. 당신의 공감 능력은 고객의 숨겨진 니즈를 파악하거나, 팀원들의 잠재력을 이끌어내는 리더십의 기반이 될 수 있습니다."; break; case "성실책임성": feedback = "맡은 일은 반드시 시간 내에, 높은 품질로 완수해야 직성이 풀리는 유형입니다. 꼼꼼함과 강한 책임감을 바탕으로 주변 사람들로부터 깊은 신뢰를 얻습니다. 당신의 안정적인 업무 수행 능력은 모든 프로젝트의 든든한 기반이 됩니다. '믿고 맡길 수 있는 사람'이라는 평가는 당신의 가장 큰 무기이며, 어떤 조직에서든 필수적인 인재로 인정받을 수 있는 핵심 역량입니다."; break; case "정서안정성": feedback = "예상치 못한 문제나 갑작스러운 변화 속에서도 침착함을 잃지 않습니다. 스트레스 상황에서도 감정적으로 동요하기보다, 문제를 객관적으로 분석하고 해결책을 찾는 데 집중합니다. 이러한 안정감은 위기 상황에서 팀의 중심을 잡아주는 역할을 합니다. 당신의 강한 멘탈은 빠르게 변화하고 압박이 심한 환경에서도 꾸준한 성과를 내는 원동력이 될 것입니다."; break; case "창의탐구성": feedback = "늘 새로운 아이디어에 목마르고, 기존의 틀을 깨는 시도를 즐깁니다. 호기심이 많아 새로운 지식이나 기술을 빠르게 학습하며, 복잡한 문제를 창의적인 관점에서 해결하는 데 강점을 보입니다. 당신의 탐구 정신은 조직의 혁신을 이끄는 원동력이 될 것입니다. 남들이 보지 못하는 새로운 가능성을 발견하고, 그것을 현실로 만들어내는 과정에서 큰 성취감을 느낄 것입니다." }return `<div><h4>🎉 ${key} (점수: ${score}/20)</h4><p>${feedback}</p></div>` })).join("")} </div> <div class="result-card"> <h3>🌱 당신의 개선점 (Bottom 2)</h3> ${bottom2.map((([key, score]) => { let feedback = ""; switch (key) { case "사회관계성": feedback = "다소 신중하고 내향적인 성향으로, 새로운 환경이나 사람들과 친해지는 데 시간이 걸릴 수 있습니다. 이는 깊이 있는 관계를 중시하기 때문일 수 있습니다. 다만, 업무적으로는 조금 더 적극적으로 자신을 표현하고 다양한 동료와 교류하려는 의식적인 노력이 당신의 협업 능력을 한 단계 더 성장시킬 수 있습니다. 예를 들어, 회의에서 의식적으로 먼저 질문을 던지거나, 점심시간에 다른 팀 동료와 대화를 시도하는 작은 습관을 만드는 것이 좋습니다. 당신의 깊이 있는 생각을 더 자주 공유할 때, 주변 사람들은 당신의 통찰력에 더 크게 신뢰를 보낼 것입니다."; break; case "공감배려성": feedback = "관계나 감정보다는 객관적인 사실과 원칙에 기반하여 판단하는 경향이 있습니다. 이는 공정하고 논리적인 의사결정에 강점을 보이지만, 때로는 동료의 감정을 충분히 헤아리지 못한다는 인상을 줄 수도 있습니다. 협업 시 상대방의 입장을 먼저 생각하고 소통하려는 노력이 더해진다면 더욱 뛰어난 팀플레이어가 될 것입니다. 동료의 의견에 반대하기 전에 \"그렇게 생각할 수도 있겠네요. 그런데 제 생각은...\"과 같이 상대방의 의견을 먼저 인정해주는 화법을 연습해보는 것도 좋은 방법입니다."; break; case "성실책임성": feedback = "큰 그림을 보고 빠르게 실행하는 데 강점이 있으며, 정해진 규칙이나 세부사항에 얽매이는 것을 선호하지 않을 수 있습니다. 이는 유연한 사고로 이어질 수 있지만, 때로는 꼼꼼함이 부족하다는 인상을 줄 수 있습니다. 중요한 업무일수록 마감 기한과 디테일을 한번 더 확인하는 습관을 들인다면 신뢰도를 더욱 높일 수 있습니다. 체크리스트를 활용하거나, 동료에게 크로스체크를 부탁하는 것도 좋은 방법입니다. 당신의 빠른 실행력에 꼼꼼함이 더해진다면 누구도 따라올 수 없는 경쟁력이 될 것입니다."; break; case "정서안정성": feedback = "주변 환경의 변화나 외부 자극에 민감하게 반응하는 편입니다. 이는 섬세한 감수성으로 이어져 다른 사람들이 놓치는 미묘한 문제점을 발견하는 데 도움이 될 수 있습니다. 하지만 스트레스가 높은 상황에서는 감정적인 소모가 클 수 있으니, 자신만의 스트레스 해소법(예: 명상, 운동, 취미 생활)을 찾고 평정심을 유지하는 연습이 필요합니다. 감정이 격해질 때는 잠시 하던 일을 멈추고 심호흡을 하는 것만으로도 큰 도움이 될 수 있습니다."; break; case "창의탐구성": feedback = "새롭고 불확실한 시도보다는, 검증되고 안정적인 방식을 선호하는 경향이 있습니다. 이는 업무의 효율성과 안정성을 높이는 데 큰 장점이 됩니다. 하지만 빠르게 변화하는 환경에 적응하기 위해, 가끔은 기존의 방식에 의문을 제기하고 작은 개선이라도 시도해보는 열린 자세가 당신의 경쟁력을 더욱 강화시킬 것입니다. 관련 분야의 최신 트렌드를 다루는 아티클을 주 1회 읽어보거나, 새로운 툴을 가볍게 사용해보는 등 작은 시도부터 시작해보는 것을 추천합니다." }return `<div><h4>🌱 ${key} (점수: ${score}/20)</h4><p>${feedback}</p></div>` })).join("")} </div> <script> new Chart(document.getElementById('personalityChart').getContext('2d'), { type: 'radar', data: { labels: ${JSON.stringify(Object.keys(scores))}, datasets: [{ label: '성격 특성 점수', data: ${JSON.stringify(Object.values(scores))}, backgroundColor: 'rgba(79, 70, 229, 0.2)', borderColor: 'rgba(79, 70, 229, 1)', borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { r: { beginAtZero: true, max: 20, ticks: { stepSize: 4 } } } } }); <\/script>`; }
+        function generateWorkStyleReport(answers) { /* ... 이 함수 내용은 변경 없음 ... */ const styles = { 주도지향성: 0, 협력지향성: 0, 체계지향성: 0, 유연지향성: 0, 혁신지향성: 0 }; if ("string" == typeof answers.q0) for (const key in answers) { const value = answers[key]; styles.hasOwnProperty(value) && (styles[value] += 2.5) } else { const t = Object.keys(styles); for (let e = 0; e < 20; e++)styles[t[Math.floor(e / 4)]] += parseInt(answers[`q${e}`]) } const sortedStyles = Object.entries(styles).sort((([, a], [, b]) => b - a)); const top1 = sortedStyles[0][0]; const top2 = sortedStyles[1][0]; const typeMap = { "주도지향성-협력지향성": { name: "👍 팀플메이커", desc: "사람들을 모아 함께 성과를 만들어내는 인재" }, "주도지향성-체계지향성": { name: "👍 플랜보스", desc: "계획을 세우고 추진력을 발휘하는 인재" }, "유연지향성-주도지향성": { name: "👍 트러블슈터", desc: "위기에도 해결책을 찾아내는 인재" }, "주도지향성-혁신지향성": { name: "☀️ 이노베이터", desc: "새로운 길을 열어가는 인재" }, "체계지향성-협력지향성": { name: "👍 하모나이저", desc: "조화를 이루며 질서를 세우는 인재" }, "유연지향성-협력지향성": { name: "👍 케어테이커", desc: "사람을 돌보고 상황을 살피는 인재" }, "혁신지향성-협력지향성": { name: "👍 인싸메이커", desc: "새로운 흐름 속에서 모두를 어울리게 하는 인재" }, "유연지향성-체계지향성": { name: "👍 멀티플레이어", desc: "여러 역할을 유연하게 해내는 인재" }, "체계지향성-혁신지향성": { name: "👍 시스템체인저", desc: "체계를 바탕으로 변화를 이끄는 인재" }, "유연지향성-혁신지향성": { name: "👍 크리에이터", desc: "자유롭게 새로움을 만들어내는 인재" } }; const typeKey = [top1, top2].sort().join("-"); const userType = typeMap[typeKey] || { name: "👍 균형잡힌 멀티플레이어", desc: "다양한 성향을 고루 갖추어 어떤 역할이든 유연하게 수행하는" }; const cautionaryMap = { 주도지향성: { name: "'케어테이커(협력+유연)'나 '하모나이저(협력+체계)'", reason: "당신의 빠른 의사결정과 추진력이 상대방에게는 충분한 논의나 공감 없이 일방적으로 느껴질 수 있습니다. 목표를 향해 나아가면서도, 팀원들의 감정과 안정감을 고려하는 소통 방식이 필요합니다." }, 협력지향성: { name: "'이노베이터(주도+혁신)'나 '플랜보스(주도+체계)'", reason: "상대방의 강한 주도성과 명확한 목표 의식이 때로는 당신의 의견을 충분히 반영하지 않고 지나치게 빠르게 느껴질 수 있습니다. 팀의 조화를 지키면서도, 자신의 전문적인 의견을 명확하고 논리적으로 전달하는 연습이 중요합니다." }, 체계지향성: { name: "'크리에이터(유연+혁신)'나 '이노베이터(주도+혁신)'", reason: "당신이 중요하게 생각하는 계획과 절차가 상대방의 창의적이고 즉흥적인 아이디어에 의해 흔들릴 때 스트레스를 받을 수 있습니다. 안정적인 프로세스도 중요하지만, 때로는 새로운 시도를 위한 유연성을 발휘하는 것이 더 큰 성과로 이어질 수 있습니다." }, 유연지향성: { name: "'플랜보스(주도+체계)'나 '시스템체인저(체계+혁신)'", reason: "변화에 빠르게 적응하는 당신의 강점과 달리, 상대방은 정해진 계획과 규칙을 매우 중요하게 생각할 수 있습니다. 예상치 못한 변수가 발생했을 때, 일방적으로 계획을 바꾸기보다 상대방에게 상황을 충분히 설명하고 동의를 구하는 과정이 갈등을 줄일 수 있습니다." }, 혁신지향성: { name: "'하모나이저(협력+체계)'나 '멀티플레이어(체계+유연)'", reason: "당신의 새롭고 혁신적인 아이디어가 상대방에게는 검증되지 않은 리스크로 느껴질 수 있습니다. 아이디어를 제시할 때, 그것이 기존 시스템에 어떻게 긍정적으로 기여할 수 있는지 구체적인 데이터나 논리를 함께 제시하여 상대방을 설득하는 노력이 필요합니다." } }; const cautionaryCombination = cautionaryMap[top1] || { name: "다른 성향의 동료", reason: "자신의 강점이 지나칠 때 상대방에게는 약점으로 비춰질 수 있습니다. 항상 상대방의 업무 스타일을 존중하고 열린 자세로 소통하는 것이 중요합니다." }; return ` <div class="result-card"> <h3>🏆 당신의 업무 페르소나: ${userType.desc} '${userType.name}'</h3> <p>당신은 팀의 목표를 향해 나아갈 때, <strong>'${top1}'</strong>의 에너지와 <strong>'${top2}'</strong>의 시너지를 발휘하는 사람입니다. 이는 단순히 두 가지 성향을 가진 것을 넘어, 두 특성이 결합하여 독특한 강점을 만들어냄을 의미합니다. 예를 들어, '${top1}'을 통해 목표를 설정하고 추진하면서도, '${top2}'를 통해 그 과정에서 발생할 수 있는 변수를 고려하고 팀원들과의 조화를 잃지 않는 균형 감각을 보여줍니다. 당신의 존재감은 팀에 강력한 추진력과 안정감을 동시에 제공하며, 이 고유한 조합은 당신이 어떤 상황에서 빛을 발하고 어떻게 협업할 때 최고의 시너지를 내는지 알려주는 핵심 열쇠입니다. 자신의 페르소나를 잘 이해하고 활용하는 것이 중요합니다.</p> </div> <div class="result-card"> <h3>⭐ 각 요인별 상세 피드백</h3> <div class="max-w-xl mx-auto h-64 md:h-96 mb-6"><canvas id="workStyleChart"></canvas></div> ${Object.entries(styles).map((([key, score]) => { let meaning = "", feedback = ""; switch (key) { case "주도지향성": meaning = "스스로 앞장서서 일을 이끌고 책임지려는 성향입니다."; feedback = score >= 10 ? "<strong>[높음]</strong> 당신은 타고난 리더입니다. 불확실한 상황에서도 방향을 제시하고 팀을 이끄는 데 강점을 보입니다. 목표 지향적이며 결과물을 만들어내는 능력이 탁월합니다. 다만, 때로는 너무 빠른 속도감으로 인해 팀원들이 지칠 수 있으니, 의사결정 과정에서 팀원들의 의견을 경청하고 속도를 조절하는 노력이 더해진다면 더욱 존경받는 리더가 될 것입니다." : score >= 5 ? "<strong>[중간]</strong> 당신은 필요할 때 리더의 역할을 수행하지만, 항상 전면에 나서기보다는 팀과 조화를 이루는 것을 선호합니다. 상황에 따라 유연하게 리더와 팔로워의 역할을 오갈 수 있는 균형감이 돋보입니다. 이는 당신이 독단적이지 않으면서도 책임감 있는 동료라는 신뢰를 줍니다. 리더십을 발휘해야 할 중요한 순간을 잘 포착하는 연습을 한다면 잠재력을 더욱 발휘할 수 있습니다." : "<strong>[낮음]</strong> 당신은 팀의 안정적인 지원가 역할을 할 때 편안함을 느낍니다. 명확한 목표와 방향이 주어졌을 때, 자신의 역할을 묵묵히 수행하며 팀에 기여하는 데 강점을 보입니다. 리더를 보좌하거나 전문적인 실무를 담당할 때 뛰어난 역량을 발휘하며, 당신의 꾸준함은 팀의 안정성에 크게 기여합니다. 가끔은 자신의 의견을 조금 더 적극적으로 표현하는 것도 좋습니다."; break; case "협력지향성": meaning = "타인과 협업하고 긍정적인 관계를 유지하려는 성향입니다."; feedback = score >= 10 ? "<strong>[높음]</strong> 당신은 뛰어난 팀플레이어입니다. 팀의 윤활유 같은 존재로서 당신이 있으면 팀의 분위기가 부드러워지고 갈등이 줄어듭니다. 동료의 의견을 경청하고 지지하며 시너지를 만드는 데 핵심적인 역할을 합니다. 당신의 공감 능력과 배려는 팀의 심리적 안정감을 높여, 결과적으로 더 높은 성과를 이끌어내는 중요한 밑거름이 됩니다." : score >= 5 ? "<strong>[중간]</strong> 당신은 개인의 목표와 팀의 목표 사이에서 균형을 잘 맞춥니다. 독립적으로 업무를 처리하는 능력과 협업 능력을 모두 갖추고 있어 다양한 상황에 유연하게 대처할 수 있습니다. 효율성을 중시하면서도, 동료와의 관계를 해치지 않으려는 노력을 꾸준히 하는 모습이 긍정적인 평가를 받습니다. 때로는 자신의 의견을 조금 더 명확하게 주장하는 것이 팀에 도움이 될 수 있습니다." : "<strong>[낮음]</strong> 당신은 독립적으로 업무를 수행할 때 최고의 효율을 내는 전문가 유형입니다. 혼자만의 시간을 통해 깊이 있게 문제에 몰입하고 해결책을 찾는 데 강점을 보입니다. 불필한 논쟁보다 결과로 증명하는 것을 선호합니다. 다만, 복잡한 프로젝트에서는 동료들과의 주기적인 정보 공유가 오해를 줄이고 더 나은 결과로 이어진다는 점을 기억하는 것이 좋습니다."; break; case "체계지향성": meaning = "계획, 규칙, 절차를 중시하며 꼼꼼하게 일하는 성향입니다."; feedback = score >= 10 ? "<strong>[높음]</strong> 당신은 완벽을 추구하는 전략가입니다. 마치 프로젝트의 품질 관리자처럼, 사소한 실수도 놓치지 않는 꼼꼼함으로 프로젝트의 완성도를 극대화합니다. 당신이 검토한 결과물은 언제나 믿을 수 있다는 강한 신뢰를 줍니다. 하지만 지나치게 세부사항에 집착하면 전체적인 진행 속도가 느려질 수 있으니, '중요도'에 따라 완급을 조절하는 연습이 필요합니다." : score >= 5 ? "<strong>[중간]</strong> 당신은 계획의 중요성을 인지하지만, 때로는 상황에 따라 유연하게 대처하는 것을 선호합니다. 큰 틀 안에서 움직이되, 세부적인 규칙보다는 효율성을 더 중요하게 생각할 수 있습니다. 계획과 실행 사이의 균형을 잘 잡는 당신의 능력은 안정적이면서도 효율적인 프로젝트 운영에 기여합니다. 중요한 프로젝트에서는 체크리스트를 활용하는 습관을 들이면 실수를 줄일 수 있습니다." : "<strong>[낮음]</strong> 당신은 정해진 규칙이나 절차보다 창의적인 자유를 중시합니다. 틀에 얽매이지 않고 큰 그림을 그리며, 빠른 실행을 통해 가능성을 탐색하는 데 강점을 보입니다. 아이디어를 현실로 만드는 과정 자체를 즐깁니다. 하지만 당신의 뛰어난 아이디어가 좋은 결과물로 이어지기 위해서는, 마무리 단계에서 다른 꼼꼼한 동료의 검토를 받는 등 체계적인 보완이 필요할 수 있습니다."; break; case "유연지향성": meaning = "변화와 불확실성에 대처하고 적응하는 능력입니다."; feedback = score >= 10 ? "<strong>[높음]</strong> 당신은 어떤 위기에도 흔들리지 않는 해결사입니다. 예상치 못한 문제 상황에서 새로운 기회를 포착하고 빠르게 대안을 찾아내는 능력이 뛰어납니다. 변화를 두려워하기보다 오히려 즐기는 경향이 있습니다. 당신의 긍정적인 태도와 빠른 적응력은 불확실성이 높은 프로젝트에서 팀의 등대와 같은 역할을 합니다." : score >= 5 ? "<strong>[중간]</strong> 당신은 안정적인 환경을 선호하지만, 필요한 경우 변화에 적응할 수 있는 능력을 갖추고 있습니다. 예측 가능한 상황에서는 안정적으로 성과를 내고, 변화가 필요할 때는 이를 수용할 준비가 되어 있습니다. 급격한 변화보다는 점진적인 개선을 선호하며, 변화의 필요성을 충분히 이해했을 때 적극적으로 움직입니다. 이러한 당신의 성향은 조직의 안정적인 변화 관리에 긍정적으로 기여합니다." : "<strong>[낮음]</strong> 당신은 예측 가능하고 안정적인 환경에서 최고의 성과를 냅니다. 반복적인 업무나 명확한 절차가 있는 업무를 통해 꾸준히 성과를 쌓아가는 것을 선호하며, 급작스러운 변화에는 스트레스를 받을 수 있습니다. 당신의 꾸준함과 안정성은 조직 운영의 튼튼한 기반이 됩니다. 변화가 불가피할 때는, 변화의 목표와 계획을 명확하게 공유받을 때 더 쉽게 적응할 수 있습니다."; break; case "혁신지향성": meaning = "새로운 아이디어를 탐색하고 기존의 방식을 개선하려는 성향입니다."; feedback = score >= 10 ? "<strong>[높음]</strong> 당신은 팀의 아이디어 뱅크입니다. 기존에 없던 새로운 관점으로 문제를 해결하고 혁신적인 아이디어를 제시하는 데 탁월합니다. 현상 유지에 안주하지 않고 끊임없이 더 나은 방식을 고민합니다. 당신의 창의적인 제안은 팀과 조직에 새로운 활력을 불어넣고 성장을 이끄는 중요한 원동력이 될 것입니다. 아이디어를 구체적인 실행 계획으로 연결하는 노력을 더한다면 금상첨화입니다." : score >= 5 ? "<strong>[중간]</strong> 당신은 창의적인 아이디어의 가치를 인정하지만, 동시에 현실적인 실행 가능성을 중요하게 생각합니다. 혁신과 안정 사이에서 균형을 맞추려는 경향이 있습니다. 기존의 방식을 개선하는 '점진적 혁신'에 강점을 보이며, 당신의 현실적인 아이디어는 조직에 실질적인 도움이 될 때가 많습니다. 새로운 아이디어를 접했을 때 비판적으로 보기보다 가능성을 먼저 탐색하는 열린 자세를 갖는 것이 좋습니다." : "<strong>[낮음]</strong> 당신은 검증된 프로세스와 효율성을 중시합니다. 새로운 시도에 따르는 리스크보다는, 현재의 방식을 최적화하여 안정적인 성과를 내는 것에 더 큰 가치를 둡니다. 당신의 이런 성향은 조직의 운영 효율성을 높이고 실수를 줄이는 데 크게 기여합니다. 다만, 시장과 기술이 빠르게 변하는 시대인 만큼, 의식적으로 새로운 트렌드에 관심을 갖고 학습하려는 노력이 당신의 경쟁력을 장기적으로 유지하는 데 도움이 될 것입니다." }return `<div><h4>${key}</h4><p><strong>의미:</strong> ${meaning}</p><p>${feedback}</p></div>` })).join("")} </div> <div class="result-card"> <h3>🤝 환상의 조합 vs 세심한 주의가 필요한 조합</h3> <p><strong>환상의 조합:</strong> 당신과 같은 '${userType.name}' 페르소나는, 당신의 강점을 보완해줄 수 있는 동료와 함께할 때 엄청난 시너지를 낼 수 있습니다. 예를 들어, ${"주도지향성" === top1 || "주도지향성" === top2 ? "당신이 앞서서 방향을 제시하면, '하모나이저'나 '케어테이커' 유형은 팀의 분위기를 다독이고 안정감을 더해줄 것입니다. 당신의 추진력에 그들의 섬세함이 더해져, 목표 달성과 팀워크 두 마리 토끼를 모두 잡을 수 있습니다." : "당신이 팀의 화합을 중요시한다면, '플랜보스'나 '이노베이터' 유형은 강력한 추진력으로 팀의 목표 달성을 가속화시킬 수 있습니다. 당신이 만든 긍정적인 분위기 속에서 그들은 자신의 역량을 마음껏 펼칠 수 있을 것입니다."} 서로의 다른 강점을 인정하고 협력할 때, 어떤 어려움도 해결할 수 있는 최고의 팀이 될 것입니다.</p> <p><strong>주의가 필요한 조합:</strong> 때로는 당신의 강점이 특정 유형의 동료와 만났을 때 오해를 낳거나 갈등의 원인이 되기도 합니다. 예를 들어, <strong>${cautionaryCombination.name}</strong> 유형과 협업할 때 주의가 필요할 수 있습니다. ${cautionaryCombination.reason} 서로의 업무 스타일이 '틀린' 것이 아니라 '다른' 것임을 이해하고, 의식적으로 소통의 방식을 조율하려는 노력이 성공적인 협업의 핵심입니다.</p> </div> <div class="result-card"> <h3>📚 10가지 업무 페르소나 참고 자료</h3> <p>업무 성향의 상위 2가지 조합에 따라 다음과 같은 10가지 페르소나 유형으로 분류할 수 있습니다. 각 유형의 특징을 이해하면 자신과 동료의 업무 스타일을 파악하고 시너지를 내는 데 도움이 됩니다.</p> <ul class="list-disc pl-5" style="columns: 2; -webkit-columns: 2; -moz-columns: 2;"> ${Object.values(typeMap).map((t => `<li><strong>${t.name.split("(")[0]}:</strong> ${t.desc}</li>`)).join("")} </ul> </div> <script> new Chart(document.getElementById('workStyleChart').getContext('2d'), { type: 'bar', data: { labels: ${JSON.stringify(Object.keys(styles))}, datasets: [{ label: '업무 성향 점수', data: ${JSON.stringify(Object.values(styles))}, backgroundColor: ['#ef4444','#f97316','#eab308','#22c55e','#3b82f6'], }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, scales: { x: { beginAtZero: true, max: 20 } }, plugins: { legend: { display: false }, tooltip: { displayColors: false } } } }); <\/script> `; }
+        function bindFeature1Listeners() { /* ... 이 함수 내용은 변경 없음 ... */ const container = document.getElementById("feature1-section"); const resetToMain = () => { container.innerHTML = getFeature1HTML(), updateF1CardStates(), bindFeature1Listeners() }; const createCardClickHandler = ((t, e, o = !1) => { const n = document.getElementById(`f1-card-${"job" === t ? "job" : t}`); n && (n.onclick = () => { const a = n.classList.contains("completed"); (a && "experience" !== t) || (o ? appState.feature1Data.jobInfo ? (alert('이미 작성된 내용이 있습니다. 다시 작성하시려면 "초기화" 버튼을 눌러주세요.'), void 0) : (container.innerHTML = getF1JobHTML(), void bindJobFormListeners(resetToMain)) : "experience" === t ? (container.innerHTML = getF1ExperienceHTML(), void bindExperienceFormListeners(resetToMain)) : handleCardClick(t, e, !1)) }) }); createCardClickHandler("job", null, !0), createCardClickHandler("jobValue", "jobValueResult"), createCardClickHandler("personality", "personalityResult"), createCardClickHandler("workStyle", "workStyleResult"), createCardClickHandler("experience", null) }
+        function bindJobFormListeners(resetToMain) { /* ... 이 함수 내용은 변경 없음 ... */ const setupSelectionGrid = ((t, e) => { const o = document.getElementById(t), n = document.getElementById(`${t}-other`); o.addEventListener("click", (t => { if (t.target.classList.contains("selection-box")) { const n = t.target; o.querySelectorAll(".selection-box.selected").length; n.classList.toggle("selected") } })); const a = () => { const a = n.value.trim(); if (a) { if (Array.from(o.querySelectorAll(".selection-box")).some((t => t.dataset.value === a))) return alert("이미 존재하는 항목입니다."), void (n.value = ""); if (o.querySelectorAll(".selection-box.selected").length >= e) return void alert(`최대 ${e}개까지 선택할 수 있습니다.`); const l = document.createElement("div"); l.className = "selection-box selected", l.dataset.value = a, l.textContent = a, o.appendChild(l), n.value = "" } }; n.addEventListener("keydown", (t => { if ("Enter" === t.key) return t.preventDefault(), void a() })), n.addEventListener("blur", a) }); setupSelectionGrid("f1-industry-container", 2), setupSelectionGrid("f1-job-category-container", 3), setupSelectionGrid("f1-job-duties-container", 4), setupSelectionGrid("f1-major-container", 1), document.getElementById("f1-back-btn").onclick = resetToMain, document.getElementById("f1-job-save-btn").onclick = () => { const t = t => Array.from(document.querySelectorAll(`#${t} .selection-box.selected`)).map((t => t.dataset.value)); appState.feature1Data.jobInfo = { industry: t("f1-industry-container"), jobCategory: t("f1-job-category-container"), jobDuties: t("f1-job-duties-container"), major: t("f1-major-container") }, 0 === appState.feature1Data.jobInfo.industry.length && 0 === appState.feature1Data.jobInfo.jobCategory.length && 0 === appState.feature1Data.jobInfo.jobDuties.length ? (alert("하나 이상의 항목을 선택해주세요."), appState.feature1Data.jobInfo = null) : (saveUserData(appState.currentUser, appState.feature1Data), alert("저장되었습니다!"), resetToMain()) } }
+        function handleCardClick(cardType, resultKey, forceShowResult = false) { /* ... 이 함수 내용은 변경 없음 ... */ const container = document.getElementById("feature1-section"); const resetToMain = () => { container.innerHTML = getFeature1HTML(), updateF1CardStates(), bindFeature1Listeners() }; if (appState.feature1Data[resultKey] && forceShowResult) { container.innerHTML = getResultHTML(cardType), document.getElementById("f1-back-btn").onclick = resetToMain; const t = document.getElementById("f1-result-content"); t.innerHTML = appState.feature1Data[resultKey], document.getElementById("f1-loader").style.display = "none", t.classList.remove("hidden"); const e = t.querySelector("script"); if (e) { const o = document.createElement("script"); o.innerHTML = e.innerHTML, t.appendChild(o), e.remove() } const o = document.getElementById("f1-download-btn"); o.classList.remove("hidden"), o.onclick = () => { const t = new Blob([`<html><head><meta charset="UTF-8"><title>진단결과</title><style>body{font-family:sans-serif;padding:20px;}.result-card{border:1px solid #eee;border-radius:8px;padding:1.5rem;margin-bottom:1.5rem;}</style></head><body>${appState.feature1Data[resultKey].replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")}</body></html>`], { type: "text/html" }), e = document.createElement("a"); e.href = URL.createObjectURL(t), e.download = `ReadyJob_${cardType}_결과.html`, e.click() } } else showQuiz(cardType) }
+        function bindExperienceFormListeners(resetToMain) { /* ... 이 함수 내용은 변경 없음 ... */ document.getElementById("f1-back-btn").onclick = resetToMain; const typeSelect = document.getElementById("f1-exp-type"), typeOtherInput = document.getElementById("f1-exp-type-other"), startYearSelect = document.getElementById("f1-exp-start-year"), startMonthSelect = document.getElementById("f1-exp-start-month"), endYearSelect = document.getElementById("f1-exp-end-year"), endMonthSelect = document.getElementById("f1-exp-end-month"), presentCheckbox = document.getElementById("f1-exp-present"), tasksContainer = document.getElementById("f1-exp-tasks-container"); typeSelect.onchange = () => typeOtherInput.classList.toggle("hidden", "기타" !== typeSelect.value), presentCheckbox.onchange = () => { endYearSelect.disabled = presentCheckbox.checked, endMonthSelect.disabled = presentCheckbox.checked }; const currentYear = (new Date).getFullYear(); for (let t = currentYear; t >= 1990; t--) [startYearSelect, endYearSelect].forEach((e => e.add(new Option(t + "년", t)))); for (let t = 1; t <= 12; t++) [startMonthSelect, endMonthSelect].forEach((e => e.add(new Option(t + "월", t)))); const createNewTaskItem = () => { const t = document.createElement("div"); t.className = "task-item", t.innerHTML = '<input type="text" class="task-input w-full rounded-md border-gray-300 shadow-sm" placeholder="예: 신규 고객 유치 프로모션 기획"><button type="button" class="delete-task-btn"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></button>', tasksContainer.appendChild(t) }; tasksContainer.addEventListener("click", (t => { t.target.closest(".delete-task-btn") && t.target.closest(".task-item").remove() })), document.getElementById("add-task-btn").onclick = createNewTaskItem; for (let t = 0; t < 3; t++)createNewTaskItem(); updateExperienceList(), document.getElementById("f1-add-exp-btn").onclick = () => { const t = "기타" === typeSelect.value ? typeOtherInput.value : typeSelect.value, e = document.getElementById("f1-exp-org").value, o = Array.from(tasksContainer.querySelectorAll(".task-input")).map((t => t.value)).filter(Boolean); if (t && e && 0 !== o.length) { const n = { startY: startYearSelect.value, startM: startMonthSelect.value, endY: presentCheckbox.checked ? null : endYearSelect.value, endM: presentCheckbox.checked ? null : endMonthSelect.value, isPresent: presentCheckbox.checked }; appState.feature1Data.socialExperiences.push({ id: Date.now(), type: t, org: e, tasks: o, period: n, duration: calculateDuration(n.startY, n.startM, n.endY, n.endM, n.isPresent), notes: document.getElementById("f1-exp-notes").value }), saveUserData(appState.currentUser, appState.feature1Data), updateExperienceList(), typeSelect.value = "직장 경력", typeOtherInput.classList.add("hidden"), typeOtherInput.value = "", document.getElementById("f1-exp-org").value = "", tasksContainer.innerHTML = ""; for (let t = 0; t < 3; t++)createNewTaskItem(); document.getElementById("f1-exp-notes").value = "", presentCheckbox.checked = !1, endYearSelect.disabled = !1, endMonthSelect.disabled = !1 } else alert("경험 유형, 조직/활동명, 주요 활동은 필수 항목입니다.") } }
+        const calculateDuration = (startY, startM, endY, endM, isPresent) => { /* ... 이 함수 내용은 변경 없음 ... */ const t = new Date(startY, startM - 1), e = isPresent ? new Date : new Date(endY, endM - 1); let o = 12 * (e.getFullYear() - t.getFullYear()) - t.getMonth() + e.getMonth() + 1; if (o <= 0) return "1개월 미만"; const n = Math.floor(o / 12), a = o % 12; return n > 0 && a > 0 ? `${n}년 ${a}개월` : n > 0 ? `${n}년` : `${a}개월` };
+        const updateExperienceList = () => { /* ... 이 함수 내용은 변경 없음 ... */ const t = document.getElementById("f1-experience-list"), e = appState.feature1Data.socialExperiences; 0 === e.length ? t.innerHTML = '<p class="text-gray-500 text-center py-8">아직 추가된 경험이 없습니다.</p>' : (t.innerHTML = e.map((t => ` <div class="experience-card"> <button data-id="${t.id}" class="exp-delete-btn absolute top-4 right-4 text-gray-400 hover:text-red-500"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.134-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.067-2.09.921-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg></button> <div class="flex items-center gap-4 mb-3"><span class="exp-type-badge">${t.type}</span><h5 class="text-lg font-bold text-gray-800">${t.org}</h5></div> <p class="text-sm text-gray-500 mb-4">${t.period.startY}.${String(t.period.startM).padStart(2, "0")} ~ ${t.period.isPresent ? "현재" : `${t.period.endY}.${String(t.period.endM).padStart(2, "0")}`} <span class="font-semibold text-gray-700 ml-2">(${t.duration})</span></p> <div class="mb-4"><h6 class="font-semibold text-gray-700 mb-2">주요 활동</h6><ul class="text-gray-600 space-y-1">${t.tasks.map((t => `<li>${t}</li>`)).join("")}</ul></div> ${t.notes ? `<div><h6 class="font-semibold text-gray-700 mb-2">소감 및 배운 점</h6><p class="text-gray-600 whitespace-pre-wrap text-sm bg-gray-50 p-3 rounded-md">${t.notes}</p></div>` : ""} </div>`)).join(""), t.querySelectorAll(".exp-delete-btn").forEach((t => { t.onclick = t => { if (confirm("이 경험을 삭제하시겠습니까?")) { const o = parseInt(t.currentTarget.dataset.id, 10); appState.feature1Data.socialExperiences = appState.feature1Data.socialExperiences.filter((t => t.id !== o)), saveUserData(appState.currentUser, appState.feature1Data), updateExperienceList() } } }))) };
+        function showQuiz(quizType) { /* ... 이 함수 내용은 변경 없음 ... */ const container = document.getElementById("feature1-section"); const resetToMain = () => { container.innerHTML = getFeature1HTML(), updateF1CardStates(), bindFeature1Listeners() }; container.innerHTML = getQuizHTML(quizType), document.getElementById("f1-back-btn").onclick = resetToMain, document.getElementById("f1-quiz-form").onsubmit = e => { e.preventDefault(), handleQuizSubmit(quizType, new FormData(e.target)) } }
+        function handleQuizSubmit(quizType, formData) { /* ... 이 함수 내용은 변경 없음 ... */ const container = document.getElementById("feature1-section"); const resetToMain = () => { container.innerHTML = getFeature1HTML(), updateF1CardStates(), bindFeature1Listeners() }; const questionCount = { jobValue: 18, personality: 20, workStyle: 8 }[quizType]; const unansweredQuestions = Array.from({ length: questionCount }, ((_, t) => t)).filter((t => !formData.has(`q${t}`))).map((t => t + 1)); if (unansweredQuestions.length > 0) return alert(`다음 문항에 답변해주세요: ${unansweredQuestions.join(", ")}`); const answers = Object.fromEntries(formData.entries()); container.innerHTML = getResultHTML(quizType), document.getElementById("f1-back-btn").onclick = resetToMain; let reportContent = ""; "jobValue" === quizType ? reportContent = generateJobValueReport(answers) : "personality" === quizType ? reportContent = generatePersonalityReport(answers) : "workStyle" === quizType && (reportContent = generateWorkStyleReport(answers)), appState.feature1Data[quizType + "Result"] = reportContent, saveUserData(appState.currentUser, appState.feature1Data), document.getElementById("f1-loader").style.display = "none"; const resultContentDiv = document.getElementById("f1-result-content"); resultContentDiv.innerHTML = reportContent, resultContentDiv.classList.remove("hidden"); const scriptTag = resultContentDiv.querySelector("script"); if (scriptTag) { const t = document.createElement("script"); t.innerHTML = scriptTag.innerHTML, resultContentDiv.appendChild(t), scriptTag.remove() } const downloadBtn = document.getElementById("f1-download-btn"); downloadBtn.classList.remove("hidden"), downloadBtn.onclick = () => {
+            const { jsPDF } = window.jspdf;
+            const targetHTML = document.getElementById("f1-result-content"); // 👈 결과 HTML div
+            const quizTitle = document.querySelector("#f1-result-container h2").textContent;
+
+            // html2canvas로 해당 div를 스크린샷(canvas)으로 변환
+            html2canvas(targetHTML, { scale: 2 }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png'); // 캔버스를 이미지 데이터로
+                const pdf = new jsPDF('p', 'mm', 'a4'); // A4 용지
+
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = pdf.internal.pageSize.getHeight();
+                const imgWidth = canvas.width;
+                const imgHeight = canvas.height;
+                const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+                const imgX = (pdfWidth - imgWidth * ratio) / 2;
+                const imgY = 10; // 상단 여백
+
+                // PDF에 스크린샷 이미지 추가
+                pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+
+                pdf.save(`ReadyJob_${quizTitle}.pdf`);
+            });
+        }
+
+            // --- 기능별 HTML (Feature 3, 4) ---
+            // ✅ [수정] AI 면접 기능 HTML 전체 수정
+            function getFeature3HTML() {
+                return `
+        <h2 class="text-3xl font-bold mb-2">AI 면접 시뮬레이션</h2>
+        <p class="text-gray-600 mb-8">'자기 분석' 프로필을 바탕으로 실전같은 AI 면접을 시작합니다.</p>
+
+        <div id="f3-screen-1" class="f3-screen bg-white p-6 rounded-lg shadow">
+            <h3 class="font-bold text-xl mb-6 text-center">1. 면접 연습 방식을 선택하세요.</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div data-mode="text" class="f3-selection-card">
+                    <h4 class="font-bold text-lg">📝 텍스트 면접</h4>
+                    <p class="text-sm text-gray-600">키보드로 답변을 입력하는 기본 면접입니다.</p>
+                </div>
+                <div data-mode="voice" class="f3-selection-card">
+                    <h4 class="font-bold text-lg">🎙️ 음성 면접</h4>
+                    <p class="text-sm text-gray-600">마이크를 통해 음성으로 답변합니다.</p>
+                </div>
+                <div data-mode="video" class="f3-selection-card">
+                    <h4 class="font-bold text-lg">📹 화상 면접</h4>
+                    <p class="text-sm text-gray-600">녹화된 영상을 보며 셀프 피드백을 합니다.</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="f3-screen-2" class="f3-screen hidden bg-white p-6 rounded-lg shadow">
+            <h3 class="font-bold text-xl mb-6 text-center">2. 면접 형태를 선택하세요.</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div data-type="taster" class="f3-selection-card">
+                    <h4 class="font-bold text-lg">🍰 면접 맛보기</h4>
+                    <p class="text-sm text-gray-600">핵심 역량별 대표 질문에 답변하며 감을 익힙니다.</p>
+                </div>
+                <div data-type="real" class="f3-selection-card">
+                    <h4 class="font-bold text-lg">🔥 실전 면접</h4>
+                    <p class="text-sm text-gray-600">프로필 기반 꼬리 질문으로 실전처럼 진행됩니다.</p>
+                </div>
+            </div>
+            <div id="f3-taster-options" class="hidden mt-6">
+                <h4 class="font-medium text-center mb-4">어떤 역량을 연습하시겠어요?</h4>
+                <div class="flex justify-center flex-wrap gap-4">
+                    <button data-category="자기소개" class="f3-category-btn">자기소개</button>
+                    <button data-category="지원동기" class="f3-category-btn">지원동기</button>
+                    <button data-category="직무역량" class="f3-category-btn">직무역량</button>
+                    <button data-category="소통역량" class="f3-category-btn">소통/협력</button>
+                    <button data-category="상황대처" class="f3-category-btn">상황대처</button>
+                    <button data-category="포부" class="f3-category-btn">입사 후 포부</button>
+                </div>
+            </div>
+            <div class="mt-8 flex justify-center">
+                <button id="f3-start-btn" class="w-full max-w-xs pastel-bg-primary pastel-bg-primary-hover text-white py-3 rounded-md font-bold text-lg hidden">시뮬레이션 시작</button>
+            </div>
+        </div>
+
+        <div id="f3-simulation-screen" class="f3-screen hidden">
+     <div class="bg-white p-6 rounded-lg shadow">
+        <div id="f3-video-container" class="hidden relative mb-4 bg-black rounded-md overflow-hidden aspect-video max-w-xl mx-auto">
+            <video id="f3-video-feed" autoplay playsinline muted class="w-full h-full transform scale-x-[-1]"></video>
+            <div id="f3-face-api-status" class="absolute top-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded"></div>
+        </div>
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-xl">AI 면접 진행중...</h3>
+            <div id="f3-timer" class="hidden text-2xl font-bold text-red-500">00:59</div>
+        </div>
+        
+        <div id="f3-interview-window" class="h-96 overflow-y-auto p-4 bg-gray-50 rounded-md border mb-4 space-y-4"></div>
+        <div class="relative">
+    <div id="f3-speech-status" class="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-3 py-1 rounded-full text-sm hidden animate-pulse">
+        🎙️ 듣고 있어요...
+    </div>
+    
+    <div class="flex items-end gap-2">
+        <textarea id="f3-interview-input" class="flex-grow rounded-md border-gray-300 resize-none" placeholder="답변을 입력하거나 음성 버튼을 눌러 답변하세요..." rows="3"></textarea>
+        
+        <div class="flex-shrink-0 flex items-center gap-2">
+            <button id="f3-mic-btn" class="hidden h-12 w-12 rounded-full bg-purple-600 text-white flex items-center justify-center hover:bg-purple-700 transition-colors disabled:bg-gray-400" title="음성으로 답변하기">
+                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zM3 8a1 1 0 011-1h1a1 1 0 011 1v1a4 4 0 004 4h0a4 4 0 004-4V8a1 1 0 011-1h1a1 1 0 110 2v1a6 6 0 01-6 6h0a6 6 0 01-6-6V8z"/></svg>
+            </button>
+            <button id="f3-interview-send-btn" class="h-12 px-6 rounded-md bg-gray-600 text-white font-semibold hover:bg-gray-700 transition-colors disabled:bg-gray-400">
+                답변 제출
+            </button>
+        </div>
+    </div>
+</div>
+        <div class="flex gap-2 mt-4">
+            <button id="f3-exit-btn" class="w-full bg-gray-500 text-white py-2 rounded-md hover:bg-gray-600">면접 중단</button>
+            <button id="f3-end-btn" class="w-full bg-red-600 text-white py-2 rounded-md hover:bg-red-700">면접 종료</button>
+        </div>
+    </div>
+</div>
+
+        <div id="f3-result-screen" class="f3-screen hidden">
+    <div class="bg-white p-6 rounded-lg shadow">
+        <h3 class="font-bold text-xl mb-4 text-center">AI 면접 결과 보고서</h3>
+        <div id="f3-result-loader" class="flex justify-center my-4"><div class="loader"></div></div>
+
+        <div id="f3-result-content" class="hidden space-y-6">
+            
+            <div id="f3-video-playback-container" class="hidden">
+                <h4 class="font-bold text-lg mb-2">📹 나의 면접 영상 다시보기</h4>
+                <video id="f3-playback-video" class="w-full rounded-md bg-black" controls></video>
+                <button id="f3-download-video-btn" class="w-full mt-2 bg-green-600 text-white py-2 rounded-md hover:bg-green-700 text-sm font-medium">
+                    면접 영상 다운로드
+                </button>
+            </div>
+
+            <div class="p-6 border rounded-lg bg-white">
+                <h4 class="font-bold text-lg mb-2">📊 종합 평가</h4>
+                <p id="f3-overall-evaluation" class="text-gray-600"></p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="p-6 border rounded-lg bg-white">
+                    <h4 class="font-bold text-lg mb-4">⭐ 역량 분석 그래프</h4>
+                    <div class="h-80"><canvas id="f3-radar-chart"></canvas></div>
+                </div>
+                <div class="p-6 border rounded-lg bg-purple-50 flex flex-col justify-center">
+                    <h4 class="font-bold text-lg mb-2 text-purple-700">💡 합격을 위한 Tip</h4>
+                    <p id="f3-tip" class="text-gray-700"></p>
+                </div>
+            </div>
+
+            <div id="f3-scripts-container" class="p-6 border rounded-lg bg-white">
+                <h4 class="font-bold text-lg mb-4">✍️ 답변 개선 스크립트</h4>
+                <div id="f3-scripts-list" class="space-y-6"></div>
+            </div>
+            
+            <button id="f3-retry-btn" class="w-full pastel-bg-primary pastel-bg-primary-hover text-white py-3 rounded-md font-bold">다시하기</button>
+
+        </div>
+    </div>
+</div>
+
+        <style>
+            .f3-selection-card { border: 2px solid #e5e7eb; padding: 1.5rem; border-radius: 0.75rem; text-align: center; cursor: pointer; transition: all 0.2s ease; }
+            .f3-selection-card:not(.disabled):hover { border-color: #A08CDA; transform: translateY(-4px); }
+            .f3-selection-card.selected { border-color: #A08CDA; background-color: #F9F7FD; }
+            .f3-selection-card.disabled { opacity: 0.5; cursor: not-allowed; }
+            .f3-category-btn { padding: 0.5rem 1.5rem; border: 1px solid #d1d5db; border-radius: 9999px; transition: all 0.2s ease; }
+            .f3-category-btn:hover { background-color: #f3f4f6; }
+            .f3-category-btn.selected { background-color: #EAE6F6; border-color: #A08CDA; color: #8A73C8; font-weight: 600; }
+#f3-mic-btn.recording {
+    animation: pulse-animation 1.5s infinite;
+}
+
+@keyframes pulse-animation {
+    0% { box-shadow: 0 0 0 0 rgba(160, 140, 218, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(160, 140, 218, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(160, 140, 218, 0); }
+}
+        </style>
+    `;
+            }
+
+            function getFeature4HTML() { /* ... 이 함수 내용은 변경 없음 ... */ return `<h2 class="text-3xl font-bold mb-8">개인 경력 관리</h2><p class="text-gray-600 mb-4">'자기 분석' 메뉴에서 입력한 나의 경험/역량 데이터를 이곳에서 확인하고, 최신 트렌드를 확인하며 경쟁력을 높여보세요.</p><div class="bg-white rounded-lg shadow"><div class="border-b border-gray-200"><nav id="f4-tabs" class="-mb-px flex space-x-8 p-4 overflow-x-auto" aria-label="Tabs"><button data-tab="experience" class="f4-tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm tab-btn active">나의 경험/역량</button><button data-tab="trends" class="f4-tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 tab-btn">산업/직무 트렌드</button></nav></div><div id="f4-tab-content" class="p-6"><div id="f4-experience-content" class="f4-tab-panel"><h3 class="text-xl font-bold mb-4">나의 경험 목록</h3><div id="f4-experience-list" class="space-y-4 max-h-96 overflow-y-auto pr-2"><p class="text-gray-500">아직 추가된 경험이 없습니다.</p></div></div><div id="f4-trends-content" class="f4-tab-panel hidden"><h3 class="text-xl font-bold mb-4">최신 산업/직무 트렌드</h3><div id="f4-trends-list" class="space-y-4"></div></div></div></div>`; }
+
+            let f3RadarChart = null; // 차트 인스턴스 전역 관리
+
+            // ✅ [수정] 페이지별 이벤트 리스너 바인딩 메인 함수
+            function bindEventListeners(pageId) {
+                if (pageId === 'feature2-section') {
+                    bindF2Listeners(); // F2 로직 분리
+                }
+                if (pageId === 'feature3-section') {
+                    bindF3Listeners(); // F3 로직 분리
+                }
+                if (pageId === 'feature4-section') {
+                    bindF4Listeners(); // F4 로직 분리
+                }
+            }
+
+            // --- 기능별 이벤트 리스너 ---
+            function bindF2Listeners() {
+                const setupF2QuestionSelector = () => {
+                    const coverLetterQuestions = {
+                        "지원동기": ["지원동기, 근무희망 분야 및 그 이유에 대하여 구체적으로 기술하여 주십시오.", "지원한 이유와 입사 후 회사에서 이루고 싶은 꿈을 기술하십시오"],
+                        "조직이해": ["본인이 회사를 선택함에 있어 중요시 여기는 가치와 우리 회사가 왜 그 가치와 부합하는지 본인의 의견을 서술하여 주십시오", "이제까지 가장 강하게 소속감을 느꼈던 조직은 무엇이었으며, 그 조직의 발전을 위해 헌신적으로 노력했던 것 중 가장 기억에 남는 경험은 무엇습니까?", "본인이 회사를 선택할 때 가장 중요하게 생각하는 하는 기준이 무엇인지 작성하고, 이 기준을 바탕으로 우리 회사에 지원한 동기를 기술해주세요"],
+                        "성장과정": ["본인의 성장과정을 간략히 기술하되 현재의 자신에게 가장 큰 영향을 끼친 사건, 인물 등을 포함하여 기술하시기 바랍니다. (※작품속 가상인물도 가능)", "본인이 이룬 가장 큰 성취경험과 실패경험에 대하여", "지금까지 살아오면서 가장 많은 노력을 쏟아부었던 성공 혹은 실패 경험과 그 과정을 통해 무엇을 배웠는지 소개해주세요", "스스로 목표를 설정해서 달성해나가는 과정에서 겪은 어려움과 극복 과정을 기술하시오", "자신이 현대로템 및 지원 직무에 적합한 인재라고 생각하는 이유에 대해 말씀해 주세요", "지원 분야와 관련하여 특정 영역의 전문성을 키우기 위해 꾸준히 노력한 경험에 대해 서술해 주십시오"],
+                        "개인 특성 및 역량": ["본인의 역량과 열정에 대하여", "다른 사람과 차별화되는 본인만의 특성(가치관, 성격 등)과 장점을 알려주세요", "목표와 계획을 세우고 이를 달성하기 위해 노력했던 경험에 대해 기술해주십시오", "자신이 어떤 사람인지를 하나의 '단어'로 어떻게 표현할 수 있는지 구체적인 사례를 들어 말씀해 주세요", "본인 성격의 장단점을 자신의 성장과정과 경험을 기반으로 서술하여 주십시오", "자신에게 요구된 것보다 더 높은 목표를 스스로 세워 시도했던 경험 중 가장 기억에 남는 것은 무엇입니까?"],
+                        "직무역량": ["지원한 직무 관련 본인이 갖고 있는 전문지식/경험(심화전공, 프로젝트, 논문, 공모전 등)을 작성하고 이를 바탕으로 본인이 지원 직무에 적합한 사유를 구체적으로 서술해 주시기 바랍니다", "본인의 전공능력이 지원한 직무에 적합한 사유를 구체적 사례를 들어 기술해 주시기 바랍니다", "지원 분야를 위해 '노력한 내용(전공, 직무 관련 경험 등)'과 이를 통해 '확보된 역량'을 구체적으로 기술해주십시오", "지원분야와 관련된 구체적인 지식이나 경험은 무엇이 있나요?", "본인이 지원한 직무와 관련된 지식, 프로젝트경험 및 기타역량을 기술해 주십시오.(구체적으로 작성해주시고, 근거 및 사례를 포함해 주십시오.)", "본인만의 차별화된 직무 강점과 이를 통해 당사에 기여할 수 있는 점에 대하여 기술하시오", "본인의 지원직무를 어떻게 이해하고 있는지 구체적으로 기술하고, 해당 분야에 본인이 적합하다고 판단할 수 있는 근거를 사례 및 경험을 바탕으로 기재해 주세요", "업무 또는 기타 계획 진행 과정에서 갑작스러운 어려움에 부딪혔지만 극복하려 노력했던 경험과 그 결과에 대해 말씀해 주세요", "새로운 시각으로 습관적이고 일상화된 비효율을 발견하고 개선했던 경험을 서술하여 주십시오", "새로운 것을 접목하거나 남다른 아이디어를 통해 문제를 개선했던 경험에 대해 서술해 주십시오", "잘못된 관행을 개선하거나 변화를 주도했던 경험을 설명해주세요. 진행과정에서 어떤 문제가 있었고, 어떻게 대처하여 끝까지 완수해냈는지 구체적으로 기술해주세요.", "글로벌 역량을 증명 할 수 있는 본인의 실제 경험이나 노력들을 기술하시고, 이러한 지원자의 Globality 가 입사 후 어떻게 활용 될 수 있을지 서술해 주세요"],
+                        "소통역량": ["협업을 통해서 문제를 해결해본 경험과 그 과정에서 느꼈던 본인 성격의 단점, 이를 극복하기 위한 노력을 말씀해주세요", "서로에 대한 이해를 바탕으로 타인과 소통하고 협업했던 경험을 서술하여 주십시오", "혼자 하기 어려운 일에서 다양한 자원 활용, 타인의 협력을 최대한으로 이끌어 내며, 팀워크를 발휘하여 공동의 목표 달성에 기여한 경험에 대해 서술해 주십시오", "본인과 동료의 입장, 상황을 대처해간 과정과 결과에 대해 구체적으로 기술해주세요.", "본인이 참여한 팀 활동 중 가장 기억에 남는 사례를 기술해 주세요. 각 팀원들의 역할, 과정에서 의견조율 등 어려웠던 점과 그를 극복하기 위해 어떤 노력을 기울였는지 등을 포함해 구체적으로 작성하여 주시기 바랍니다.", "학업 또는 조직활동에서 본인과 의견이 다른 구성원을 설득하고 협업하여 성과를 달성한 경험이 있다면 어떠한 방법으로 소통하였는지 구체적으로 기술해주세요", "커뮤니케이션을 잘하는 사람은 어떤 사람인지 간략히 정의하고, 커뮤니케이션 역량을 발휘했던 사례를 기술해주세요", "다른 사람을 배려하는 마음이 어느 정도라고 생각하는지 그와 관련된 사례를 기술해주세요."]
+                    };
+                    const categoryContainer = document.getElementById('f2-category-container');
+                    const detailContainer = document.getElementById('f2-question-detail-container');
+                    const questionSelect = document.getElementById('f2-question-selection');
+                    const questionInput = document.getElementById('f2-question-input');
+
+                    categoryContainer.addEventListener('click', (e) => {
+                        const card = e.target.closest('.category-card');
+                        if (!card) return;
+
+                        categoryContainer.querySelectorAll('.category-card').forEach(c => c.classList.remove('selected'));
+                        card.classList.add('selected');
+
+                        const selectedCategory = card.dataset.category;
+                        detailContainer.classList.remove('opacity-0');
+
+                        if (selectedCategory === "기타") {
+                            questionSelect.classList.add('hidden');
+                            questionInput.classList.remove('hidden');
+                            questionInput.value = '';
+                            questionInput.focus();
+                        } else if (coverLetterQuestions[selectedCategory]) {
+                            questionInput.classList.add('hidden');
+                            questionSelect.classList.remove('hidden');
+                            questionSelect.innerHTML = '';
+                            coverLetterQuestions[selectedCategory].forEach(q => {
+                                const option = document.createElement('option');
+                                option.value = q; option.textContent = q;
+                                questionSelect.appendChild(option);
+                            });
+                        }
+                    });
+                };
+                setupF2QuestionSelector();
+
+                document.getElementById('f2-generate-btn').onclick = async () => {
+                    if (appState.feature2Data.generatedCount >= 10) {
+                        return alert("자소서는 최대 10개까지 생성할 수 있습니다.");
+                    }
+
+                    const selectedCategoryCard = document.querySelector('#f2-category-container .category-card.selected');
+                    if (!selectedCategoryCard) {
+                        return alert("문항 유형을 먼저 선택해주세요.");
+                    }
+                    const category = selectedCategoryCard.dataset.category;
+                    const categoryText = selectedCategoryCard.querySelector('.category-card-text').textContent;
+
+                    let question = '';
+                    if (category === '기타') {
+                        question = document.getElementById('f2-question-input').value;
+                    } else {
+                        question = document.getElementById('f2-question-selection').value;
+                    }
+
+                    if (!question) {
+                        return alert("자소서 세부 문항을 선택하거나 입력해주세요.");
+                    }
+                    if (!appState.feature1Data.jobInfo || appState.feature1Data.socialExperiences.length === 0) {
+                        return alert("'자기 분석 & 프로필 생성'의 '희망 직무/산업'과 '나의 사회 경험'을 먼저 완료해주세요. 더 정확한 자소서가 생성됩니다.");
+                    }
+
+                    document.getElementById('f2-loader').style.display = 'flex';
+                    const charCountValue = document.getElementById('f2-char-count').value;
+                    const maxChars = parseInt(charCountValue, 10);
+                    const minChars = Math.floor(maxChars * 0.9);
+                    const lengthInstruction = `글자수는 공백을 포함하여 반드시 ${minChars}자 이상 ${maxChars}자 이하로 작성해야 해. 이 글자수 제한을 매우 엄격하게 지켜줘.`;
+                    const prompt = `취업 준비생 프로필(${JSON.stringify(appState.feature1Data)})을 바탕으로, 다음 자소서 문항에 대해 ${document.getElementById('f2-style').value}으로 작성해줘. ${lengthInstruction} 문항: "${question}"`;
+                    const result = await callGeminiAPI(prompt);
+                    appState.feature2Data.generatedCount++;
+
+                    const resultContainer = document.getElementById('f2-result-container');
+                    const newResultId = `f2-result-textarea-${appState.feature2Data.generatedCount}`;
+                    const newProofreadBtnId = `f2-proofread-btn-${appState.feature2Data.generatedCount}`;
+                    const resultCard = document.createElement('div');
+                    resultCard.className = "bg-white p-4 rounded-lg shadow";
+
+                    resultCard.innerHTML = `
+                    <div class="flex items-center mb-3">
+                        <span class="text-sm font-semibold text-white py-1 px-3 rounded-full pastel-bg-primary">${categoryText}</span>
+                    </div>
+                    <p class="text-gray-800 font-semibold text-base mb-3 leading-snug">${question}</p>
+                    <textarea id="${newResultId}" class="w-full h-64 border rounded-md p-2 text-sm">${result}</textarea>
+                    <div class="mt-2 grid grid-cols-2 gap-2">
+                        <button class="w-full bg-teal-500 text-white py-2 rounded-md hover:bg-teal-600 text-sm">HTML로 다운로드</button>
+                        <button id="${newProofreadBtnId}" class="w-full bg-gray-500 text-white py-2 rounded-md hover:bg-gray-600 text-sm">AI 문장 검수 받기</button>
+                    </div>
+                `;
+
+                    resultContainer.appendChild(resultCard);
+
+                    const downloadBtn = resultCard.querySelector('.bg-teal-500');
+                    downloadBtn.onclick = () => {
+                        const content = document.getElementById(newResultId).value;
+                        const { jsPDF } = window.jspdf; // 👈 jsPDF 로드
+                        const pdf = new jsPDF();
+
+                        // Noto Sans KR 폰트가 PDF에 내장되어 있지 않아 한글이 깨집니다.
+                        // (이 문제를 해결하려면 폰트 파일(ttf)을 로드하는 복잡한 과정이 필요합니다.)
+                        // 지금은 텍스트를 그냥 넣습니다.
+                        pdf.setFont('helvetica', 'normal'); // 기본 폰트로 설정 (한글 깨질 수 있음)
+
+                        // A4 용지 폭(약 190)에 맞춰 텍스트를 줄바꿈합니다.
+                        const lines = pdf.splitTextToSize(content, 180);
+                        pdf.text(lines, 10, 10);
+
+                        pdf.save(`ReadyJob_자소서.pdf`);
+                    };
+                }
+                const proofreadBtn = document.getElementById(newProofreadBtnId);
+                proofreadBtn.onclick = async () => {
+                    const textarea = document.getElementById(newResultId);
+                    const currentText = textarea.value;
+                    if (!currentText) return alert("검수할 내용이 없습니다.");
+                    proofreadBtn.textContent = "검수 중...";
+                    proofreadBtn.disabled = true;
+                    const proofreadPrompt = `다음 자기소개서 문장을 더 매력적이고 전문적으로 다듬어줘. 핵심 내용은 유지하되, 문장 구조, 어휘 선택, 표현력을 개선해줘. 원본: "${currentText}"`;
+                    const refinedText = await callGeminiAPI(proofreadPrompt);
+                    textarea.value = refinedText.replace(/\*\*/g, '');
+                    alert("문장 검수가 완료되었습니다!");
+                    proofreadBtn.textContent = "AI 문장 검수 받기";
+                    proofreadBtn.disabled = false;
+                };
+
+                document.getElementById('f2-loader').style.display = 'none';
+            };
+        }
+        let faceApiModelsLoaded = false;
+        function bindF4Listeners() {
+            const tabs = document.querySelectorAll('.f4-tab-btn');
+            const panels = document.querySelectorAll('.f4-tab-panel');
+
+            tabs.forEach(tab => {
+                tab.onclick = () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    panels.forEach(p => p.classList.add('hidden'));
+
+                    tab.classList.add('active');
+                    const targetPanel = document.getElementById(`f4-${tab.dataset.tab}-content`);
+                    targetPanel.classList.remove('hidden');
+
+                    if (tab.dataset.tab === 'experience') {
+                        const listDiv = document.getElementById('f4-experience-list');
+                        const experiences = appState.feature1Data.socialExperiences;
+                        if (experiences.length === 0) {
+                            listDiv.innerHTML = `<p class="text-gray-500">'자기 분석 & 프로필 생성' 메뉴에서 사회 경험을 추가해주세요.</p>`;
+                        } else {
+                            listDiv.innerHTML = experiences.map(exp => `
+                            <div class="experience-card !p-4">
+                                <div class="flex items-center gap-4 mb-2"><span class="exp-type-badge">${exp.type}</span><h5 class="font-bold text-gray-800">${exp.org}</h5></div>
+                                <p class="text-xs text-gray-500 mb-3">${exp.period.startY}.${String(exp.period.startM).padStart(2, '0')} ~ ${exp.period.isPresent ? '현재' : `${exp.period.endY}.${String(exp.period.endM).padStart(2, '0')}`} <span class="font-semibold text-gray-700 ml-1">(${exp.duration})</span></p>
+                                <ul class="text-sm text-gray-600 space-y-1 list-disc pl-5">${exp.tasks.map(t => `<li>${t}</li>`).join('')}</ul>
+                            </div>`).join('');
+                        }
+                    }
+                };
+            });
+
+            const trendsList = document.getElementById('f4-trends-list');
+            trendsList.innerHTML = appState.feature4Data.trends.map(trend => `<div class="p-4 border rounded-md"><h4 class="font-bold">${trend.title}</h4><p class="text-gray-700 my-2">${trend.summary}</p><a href="${trend.link}" target="_blank" class="text-indigo-600 hover:underline">자세히 보기 &rarr;</a></div>`).join('');
+
+            // 기본적으로 '나의 경험/역량' 탭을 활성화
+            if (document.querySelector('.f4-tab-btn[data-tab="experience"]')) {
+                document.querySelector('.f4-tab-btn[data-tab="experience"]').click();
+            }
+        }
+
+        // ✅ [수정] AI 면접 시뮬레이션 기능의 모든 로직
+        function bindF3Listeners() {
+            // 1. 데이터 및 상태 관리
+            const interviewQuestions = { "자기소개": ["자신을 한 문장으로 표현한다면 어떻게 표현하시겠습니까?", "본인의 성격을 한 단어로 표현한다면요?", "본인의 강점을 보여주는 대표적인 경험을 소개해주세요.", "다른 사람들과 구별되는 당신만의 특징은 무엇입니까?", "지금까지의 경험에서 가장 중요한 전환점은 무엇이었나요?"], "지원동기": ["우리 회사에 지원한 동기는 무엇인가요?", "여러 기업 중 특별히 우리 회사를 선택한 이유는 무엇인가요?", "입사 후 가장 먼저 하고 싶은 일은 무엇인가요?", "지원 직무에 관심을 가지게 된 계기는 무엇인가요?", "우리 회사의 비전이나 가치 중 마음에 드는 부분은 무엇입니까?"], "직무역량": ["지원한 직무에 가장 중요한 역량은 무엇이라고 생각하나요?", "직무 관련 가장 성공적이었던 프로젝트 경험을 말씀해주세요.", "자신의 전공이 이 직무에 어떻게 도움이 될 것이라 생각하나요?", "이 직무를 수행하기 위해 어떤 노력을 해왔습니까?", "자신의 가장 큰 직무상 강점은 무엇인가요?"], "소통역량": ["의견이 다른 팀원을 설득해 본 경험이 있나요?", "팀워크를 강화하기 위해 어떤 노력을 하시나요?", "동료와 갈등이 생겼을 때 어떻게 해결하나요?", "본인이 생각하는 소통을 잘하는 사람이란 어떤 사람인가요?", "타인의 피드백을 수용하여 개선한 경험이 있나요?"], "상황대처": ["상사가 부당한 지시를 한다면 어떻게 대응하겠습니까?", "프로젝트 마감이 임박했는데 예상치 못한 문제가 발생하면 어떻게 대처하겠습니까?", "자신의 아이디어가 거절당했을 때 어떻게 반응하나요?", "주어진 자원이 부족한 상황에서 과업을 성공시켜야 한다면 어떻게 하겠습니까?", "스트레스가 많은 상황에서 평정심을 유지한 경험이 있나요?"], "포부": ["입사 후 1년 내에 이루고 싶은 목표는 무엇인가요?", "5년, 10년 뒤 자신의 모습은 어떨 것 같나요?", "우리 회사에서 이루고 싶은 최종적인 꿈은 무엇인가요?", "성장을 위해 어떤 노력을 지속적으로 하고 있나요?", "회사 발전에 기여할 수 있는 아이디어가 있나요?"] };
+
+            const simulationState = { mode: null, type: null, category: null, chatHistory: [], isRecognizing: false, stream: null, answerTimer: null, mediaRecorder: null, recordedChunks: [], isWaitingForAI: false };
+            let recognition;
+            let endOfSpeechTimeout;
+
+            // 2. 기술 API 초기화 (음성, 화상)
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (SpeechRecognition) {
+                recognition = new SpeechRecognition();
+                recognition.continuous = true;
+                recognition.lang = 'ko-KR';
+                recognition.interimResults = true;
+
+                recognition.onresult = (event) => {
+                    if (simulationState.isWaitingForAI) return;
+
+                    clearTimeout(endOfSpeechTimeout);
+                    let final_transcript = '';
+                    let interim_transcript = '';
+                    for (let i = event.resultIndex; i < event.results.length; ++i) {
+                        if (event.results[i].isFinal) {
+                            final_transcript += event.results[i][0].transcript;
+                        } else {
+                            interim_transcript += event.results[i][0].transcript;
+                        }
+                    }
+                    const currentBaseText = Array.from(event.results).slice(0, event.resultIndex).map(r => r[0].transcript).join('');
+                    document.getElementById('f3-interview-input').value = currentBaseText + final_transcript + interim_transcript;
+
+                    endOfSpeechTimeout = setTimeout(() => {
+                        if (recognition) recognition.stop();
+                    }, 4000);
+                };
+                recognition.onstart = () => {
+                    simulationState.isRecognizing = true;
+                    document.getElementById('f3-speech-status').classList.remove('hidden');
+                    document.getElementById('f3-mic-btn').classList.add('recording');
+                    document.getElementById('f3-interview-input').value = '';
+
+                    if (!simulationState.answerTimer) {
+                        startAnswerTimer();
+                    }
+                };
+                recognition.onend = () => {
+                    simulationState.isRecognizing = false;
+                    document.getElementById('f3-speech-status').classList.add('hidden');
+                    document.getElementById('f3-mic-btn').classList.remove('recording');
+
+                    if (document.getElementById('f3-interview-input').value.trim() && !simulationState.isWaitingForAI) {
+                        handleInterviewSend();
+                    }
+                };
+                recognition.onerror = (event) => console.error("Speech recognition error:", event.error);
+            }
+
+            async function startVideo() {
+                const videoEl = document.getElementById('f3-video-feed');
+                const statusEl = document.getElementById('f3-face-api-status');
+
+                try {
+                    statusEl.textContent = "카메라 준비 중...";
+                    simulationState.stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                    videoEl.srcObject = simulationState.stream;
+                    videoEl.onloadedmetadata = () => {
+                        statusEl.textContent = "면접 영상 녹화 중...";
+                        statusEl.style.color = "red";
+
+                        simulationState.recordedChunks = [];
+                        const options = { mimeType: 'video/webm; codecs=vp9' };
+                        simulationState.mediaRecorder = new MediaRecorder(simulationState.stream, options);
+
+                        simulationState.mediaRecorder.ondataavailable = (event) => {
+                            if (event.data.size > 0) {
+                                simulationState.recordedChunks.push(event.data);
+                            }
+                        };
+
+                        simulationState.mediaRecorder.onstop = async () => {
+                            const blob = new Blob(simulationState.recordedChunks, { type: 'video/webm' });
+                            const fileName = `public/${appState.currentUser}_${new Date().getTime()}.webm`;
+
+                            try {
+                                // 1. Supabase Storage에 업로드 (버킷 이름을 1단계에서 만든 것으로!)
+                                const { data, error } = await supabaseClient.storage
+                                    .from('interview_videos') // 👈 1단계에서 만든 버킷 이름
+                                    .upload(fileName, blob, {
+                                        cacheControl: '3600',
+                                        upsert: false
+                                    });
+
+                                if (error) throw error;
+
+                                // 2. 업로드된 파일의 영구 URL 가져오기
+                                const { data: urlData } = supabaseClient.storage
+                                    .from('interview_videos') // 👈 1단계에서 만든 버킷 이름
+                                    .getPublicUrl(fileName);
+
+                                const videoURL = urlData.publicUrl;
+
+                                // 3. 재생 및 다운로드 버튼에 영구 URL 연결
+                                const playbackVideoEl = document.getElementById('f3-playback-video');
+                                const playbackContainer = document.getElementById('f3-video-playback-container');
+                                playbackVideoEl.src = videoURL;
+                                playbackContainer.classList.remove('hidden');
+
+                                const downloadBtn = document.getElementById('f3-download-video-btn');
+                                downloadBtn.onclick = () => {
+                                    const a = document.createElement('a');
+                                    a.style.display = 'none';
+                                    a.href = videoURL;
+                                    a.download = `ReadyJob_면접영상.webm`; // 다운로드할 파일 이름
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    document.body.removeChild(a);
+                                };
+
+                                // [선택 사항] 이 videoURL을 백엔드 API를 통해 DB에 저장할 수 있습니다.
+                                // await fetch(`${BACKEND_URL}/api/save-video-url`, { ... });
+
+                            } catch (error) {
+                                console.error('영상 업로드 실패:', error);
+                                alert('면접 영상 클라우드 저장에 실패했습니다.');
+                            }
+                        };
+
+                        simulationState.mediaRecorder.start();
+                    };
+                } catch (err) {
+                    console.error("카메라/마이크 접근 오류:", err);
+                    alert("카메라/마이크 접근에 실패했습니다. 브라우저의 권한을 확인해주세요.");
+                    statusEl.textContent = "장치 접근 오류";
+                }
+            }
+
+            function stopAllSimulations() {
+                if (recognition && simulationState.isRecognizing) recognition.stop();
+                clearTimeout(endOfSpeechTimeout);
+                clearInterval(simulationState.answerTimer);
+                if (simulationState.stream) {
+                    simulationState.stream.getTracks().forEach(track => track.stop());
+                }
+                Object.assign(simulationState, { stream: null, answerTimer: null });
+            }
+
+            const screens = document.querySelectorAll('.f3-screen');
+            const showScreen = (screenId) => {
+                screens.forEach(s => s.classList.add('hidden'));
+                document.getElementById(screenId)?.classList.remove('hidden');
+            };
+
+            const updateInterviewWindow = () => {
+                const interviewWindow = document.getElementById('f3-interview-window');
+                interviewWindow.innerHTML = simulationState.chatHistory.map(msg => {
+                    if (msg.type === 'loading') {
+                        return `<div class="flex justify-start"><div class="p-3 chat-bubble chat-bubble-ai italic text-gray-500">${msg.text}</div></div>`;
+                    }
+                    return `<div class="flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}"><div class="p-3 chat-bubble ${msg.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-ai'}">${msg.text.replace(/\n/g, '<br>')}</div></div>`;
+                }).join('');
+                interviewWindow.scrollTop = interviewWindow.scrollHeight;
+            };
+
+            const handleInterviewSend = async () => {
+                if (simulationState.isWaitingForAI) return;
+                if (recognition && simulationState.isRecognizing) {
+                    recognition.stop();
+                }
+                clearTimeout(endOfSpeechTimeout);
+
+                clearInterval(simulationState.answerTimer);
+                document.getElementById('f3-timer').classList.add('hidden');
+
+                const input = document.getElementById('f3-interview-input');
+                const answer = input.value.trim();
+                if (!answer) return;
+
+                simulationState.isWaitingForAI = true;
+
+                simulationState.chatHistory.push({ role: 'user', text: answer });
+                simulationState.chatHistory.push({ role: 'ai', text: '면접관 레디가 답변을 생성 중입니다...', type: 'loading' });
+                updateInterviewWindow();
+                input.value = '';
+                input.disabled = true;
+                document.getElementById('f3-interview-send-btn').disabled = true;
+                document.getElementById('f3-mic-btn').disabled = true;
+
+                const historyForPrompt = simulationState.chatHistory.slice(0, -1).map(m => `${m.role === 'user' ? '지원자' : '면접관'}: ${m.text}`).join('\n');
+                const nextQuestionPrompt = `
+            당신은 전문 AI 면접관입니다. 아래 대화 내용을 바탕으로 다음 질문을 해주세요.
+            [지원자 프로필] ${JSON.stringify(appState.feature1Data)}
+            [이전 대화 내용] ${historyForPrompt}
+            [지시사항]
+            1. 지원자의 마지막 답변에 대해 반드시 다른 각도의 심층 질문(꼬리 질문)을 해주세요.
+            2. 다음 질문 유형 중 하나를 선택하여 질문하세요:
+               - 경험의 구체적인 결과나 성과를 묻는 질문 (예: "그 활동을 통해 얻은 구체적인 성과는 무엇이었나요?")
+               - 경험 중 겪었던 어려움과 해결 과정을 묻는 질문 (예: "가장 어려웠던 점은 무엇이었고, 어떻게 극복하셨나요?")
+               - 그 경험을 통해 무엇을 배웠는지 묻는 질문 (예: "그 경험이 본인에게 어떤 의미였고, 무엇을 배우셨나요?")
+               - 지원자의 다른 프로필 정보(특히 사회 경험)와 연결하는 질문 (예: "말씀하신 그 역량이 OO 인턴 경험에서는 어떻게 발휘되었나요?")
+            3. 절대로 이전과 비슷하거나 같은 질문을 반복하지 마세요.
+            4. 질문만 간결하게 해주세요. 부연 설명은 필요 없습니다.`;
+
+                const nextQuestion = await callGeminiAPI(nextQuestionPrompt);
+                simulationState.chatHistory.pop();
+                simulationState.chatHistory.push({ role: 'ai', text: nextQuestion });
+                updateInterviewWindow();
+
+                simulationState.isWaitingForAI = false;
+                input.disabled = false;
+                document.getElementById('f3-interview-send-btn').disabled = false;
+                document.getElementById('f3-mic-btn').disabled = false;
+                input.focus();
+            };
+
+            function startAnswerTimer() {
+                clearInterval(simulationState.answerTimer);
+                const timerEl = document.getElementById('f3-timer');
+                timerEl.classList.remove('hidden');
+                let timeLeft = 59;
+                timerEl.textContent = `00:${String(timeLeft).padStart(2, '0')}`;
+                simulationState.answerTimer = setInterval(() => {
+                    timeLeft--;
+                    timerEl.textContent = `00:${String(timeLeft).padStart(2, '0')}`;
+                    if (timeLeft <= 0) {
+                        clearInterval(simulationState.answerTimer);
+                        if (simulationState.isRecognizing) recognition.stop();
+                        else handleInterviewSend();
+                    }
+                }, 1000);
+            }
+
+            const startInterview = async () => {
+                simulationState.chatHistory = [];
+                simulationState.isWaitingForAI = false;
+                clearInterval(simulationState.answerTimer);
+                simulationState.answerTimer = null;
+
+                if (!appState.feature1Data.jobInfo || appState.feature1Data.socialExperiences.length === 0) {
+                    return alert("'자기 분석 & 프로필 생성'의 '희망 직무/산업'과 '나의 사회 경험'을 먼저 완료해주세요.");
+                }
+
+                // ✅ 오류 수정: 모드별로 UI를 명확하게 분리
+                document.getElementById('f3-mic-btn').classList.add('hidden');
+                document.getElementById('f3-video-container').classList.add('hidden');
+
+                if (simulationState.mode === 'voice') {
+                    document.getElementById('f3-mic-btn').classList.remove('hidden');
+                } else if (simulationState.mode === 'video') {
+                    document.getElementById('f3-mic-btn').classList.remove('hidden');
+                    document.getElementById('f3-video-container').classList.remove('hidden');
+                    await startVideo();
+                }
+
+                showScreen('f3-simulation-screen');
+                document.getElementById('f3-interview-window').innerHTML = '<div class="flex justify-center my-4"><div class="loader"></div></div>';
+
+                let firstQuestion;
+                if (simulationState.type === 'taster') {
+                    const questions = interviewQuestions[simulationState.category];
+                    firstQuestion = questions[Math.floor(Math.random() * questions.length)];
+                } else {
+                    firstQuestion = await callGeminiAPI(`당신은 전문 AI 면접관입니다. 실제 면접처럼 "1분 자기소개 부탁드립니다."로 면접을 시작해주세요.`);
+                }
+                simulationState.chatHistory.push({ role: 'ai', text: firstQuestion });
+                updateInterviewWindow();
+            };
+
+            document.querySelectorAll('#f3-screen-1 .f3-selection-card').forEach(card => {
+                const mode = card.dataset.mode;
+                if (mode === 'voice' && !SpeechRecognition) {
+                    card.classList.add('disabled');
+                    card.querySelector('h4').textContent = '🎙️ 음성 면접 (미지원 브라우저)';
+                    return;
+                }
+                card.onclick = () => {
+                    simulationState.mode = mode;
+                    document.querySelector('#f3-screen-1 .selected')?.classList.remove('selected');
+                    card.classList.add('selected');
+                    showScreen('f3-screen-2');
+                };
+            });
+
+            const tasterOptions = document.getElementById('f3-taster-options'), startBtn = document.getElementById('f3-start-btn');
+            document.querySelectorAll('#f3-screen-2 .f3-selection-card').forEach(card => {
+                card.onclick = () => {
+                    simulationState.type = card.dataset.type;
+                    document.querySelector('#f3-screen-2 .selected')?.classList.remove('selected');
+                    card.classList.add('selected');
+                    if (simulationState.type === 'taster') {
+                        tasterOptions.classList.remove('hidden');
+                        startBtn.classList.add('hidden');
+                    } else {
+                        tasterOptions.classList.add('hidden');
+                        simulationState.category = null;
+                        startBtn.classList.remove('hidden');
+                    }
+                };
+            });
+
+            document.querySelectorAll('#f3-taster-options .f3-category-btn').forEach(btn => {
+                btn.onclick = () => {
+                    simulationState.category = btn.dataset.category;
+                    document.querySelector('#f3-taster-options .selected')?.classList.remove('selected');
+                    btn.classList.add('selected');
+                    startBtn.classList.remove('hidden');
+                };
+            });
+
+            startBtn.onclick = startInterview;
+            document.getElementById('f3-interview-send-btn').onclick = handleInterviewSend;
+
+            const interviewInput = document.getElementById('f3-interview-input');
+            interviewInput.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); handleInterviewSend(); } };
+            interviewInput.oninput = () => {
+                if ((simulationState.mode === 'voice' || simulationState.mode === 'video') && !simulationState.answerTimer) {
+                    startAnswerTimer();
+                }
+            };
+
+            document.getElementById('f3-mic-btn').onclick = () => {
+                if (!recognition) return;
+                if (simulationState.isRecognizing) {
+                    recognition.stop();
+                } else {
+                    recognition.start();
+                }
+            };
+
+            document.getElementById('f3-exit-btn').onclick = () => {
+                if (confirm('정말로 면접을 중단하고 이전 화면으로 돌아가시겠습니까?')) {
+                    stopAllSimulations();
+                    showScreen('f3-screen-1');
+                }
+            };
+
+            document.getElementById('f3-end-btn').onclick = async () => {
+                const userAnswerCount = simulationState.chatHistory.filter(m => m.role === 'user').length;
+                if (userAnswerCount < 1) {
+                    return alert("최소 1개 이상의 답변을 하셔야 결과 분석이 가능합니다.");
+                }
+                if (simulationState.mediaRecorder && simulationState.mediaRecorder.state === 'recording') {
+                    simulationState.mediaRecorder.stop();
+                }
+
+                stopAllSimulations();
+                showScreen('f3-result-screen');
+                document.getElementById('f3-result-content').classList.add('hidden');
+                document.getElementById('f3-result-loader').classList.remove('hidden');
+
+                const transcript = simulationState.chatHistory.filter(m => m.type !== 'loading').map(m => `${m.role === 'user' ? '지원자' : '면접관'}: ${m.text}`).join('\n\n');
+                const userAnswers = simulationState.chatHistory.filter(m => m.role === 'user').map(m => m.text);
+
+                const evaluationPrompt = `
+        당신은 채용 전문가입니다. 아래 면접 대화 내용을 바탕으로 종합적인 피드백을 제공해주세요. 피드백은 반드시 아래의 JSON 형식에 맞춰서, 다른 설명 없이 JSON 객체만 반환해주세요.
+        [면접 대화 내용]
+        ${transcript}
+        [사용자 답변 목록]
+        ${JSON.stringify(userAnswers)}
+        [출력 형식]
+        {
+          "overall": "지원자에 대한 종합적인 평가를 2~3문장으로 구체적으로 작성해주세요.",
+          "scores": { "직무 이해도": 100, "논리력": 100, "의사소통": 100, "경험의 구체성": 100, "인성/가치관": 100 },
+          "tip": "지원자가 합격하기 위한 가장 핵심적인 조언이나 팁을 한 문장으로 작성해주세요.",
+          "improved_scripts": [
+            ${userAnswers.map(answer => `{ "user_answer": "${answer.replace(/"/g, '\\"')}", "improved_script": "해당 답변에 대한 구체적이고 전문적인 개선 스크립트" }`).join(',')}
+          ]
+        }`;
+
+                const resultText = await callGeminiAPI(evaluationPrompt, true);
+
+                try {
+                    let result;
+                    const cleanedResultText = resultText.replace(/^```json\n?/, '').replace(/\n?```$/, '');
+                    result = JSON.parse(cleanedResultText);
+
+                    if (result.error) throw new Error(result.error);
+
+                    document.getElementById('f3-overall-evaluation').textContent = result.overall;
+                    document.getElementById('f3-tip').textContent = result.tip;
+
+                    const scriptsList = document.getElementById('f3-scripts-list');
+                    if (result.improved_scripts && result.improved_scripts.length > 0) {
+                        scriptsList.innerHTML = result.improved_scripts.map(item => `
+                <div>
+                    <p class="text-sm font-semibold text-gray-600 mb-1">나의 답변:</p>
+                    <p class="text-sm text-gray-800 bg-gray-100 p-2 rounded-md mb-2">${item.user_answer}</p>
+                    <p class="text-sm font-semibold text-purple-700 mb-1">💡 레디의 개선 스크립트:</p>
+                    <p class="text-sm text-purple-900 bg-purple-50 p-2 rounded-md">${item.improved_script}</p>
+                </div>
+            `).join('');
+                        document.getElementById('f3-scripts-container').classList.remove('hidden');
+                    } else {
+                        document.getElementById('f3-scripts-container').classList.add('hidden');
+                    }
+
+                    if (f3RadarChart) f3RadarChart.destroy();
+                    f3RadarChart = new Chart(document.getElementById('f3-radar-chart').getContext('2d'), { type: "radar", data: { labels: Object.keys(result.scores), datasets: [{ label: "역량 점수", data: Object.values(result.scores), backgroundColor: "rgba(160, 140, 218, 0.2)", borderColor: "#A08CDA", borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { r: { beginAtZero: true, max: 100 } } } });
+
+                    document.getElementById('f3-result-loader').classList.add('hidden');
+                    document.getElementById('f3-result-content').classList.remove('hidden');
+
+                } catch (e) {
+                    console.error("결과 파싱 또는 렌더링 오류:", e, "원본 AI 응답:", resultText);
+                    document.getElementById('f3-result-loader').classList.add('hidden');
+                    const contentDiv = document.getElementById('f3-result-content');
+                    contentDiv.classList.remove('hidden');
+                    contentDiv.innerHTML = `<p class="text-center text-red-500">결과 보고서를 생성하는 데 실패했습니다. 잠시 후 다시 시도해주세요.</p> <button id="f3-retry-btn" class="mt-6 w-full pastel-bg-primary pastel-bg-primary-hover text-white py-2 rounded-md">다시하기</button>`;
+                    document.getElementById('f3-retry-btn').onclick = () => { showScreen('f3-screen-1'); };
+                }
+            };
+
+            document.getElementById('f3-retry-btn').onclick = () => {
+                const playbackVideoEl = document.getElementById('f3-playback-video');
+                const playbackContainer = document.getElementById('f3-video-playback-container');
+                if (playbackVideoEl.src) {
+                    URL.revokeObjectURL(playbackVideoEl.src);
+                    playbackVideoEl.src = '';
+                }
+                playbackContainer.classList.add('hidden');
+
+                showScreen('f3-screen-1');
+                document.querySelectorAll('.f3-selection-card.selected, .f3-category-btn.selected').forEach(el => el.classList.remove('selected'));
+                startBtn.classList.add('hidden');
+                tasterOptions.classList.add('hidden');
+            };
+        }
+
+    </script>
+</body>
+
+</html>
