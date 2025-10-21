@@ -596,7 +596,7 @@
             <section id="feature4-section" class="feature-section"></section>
         </div>
     </div>
-
+    {% raw %}
     <script type="module">
         // --- 전역 변수 및 설정 ---
         const API_KEY = "AIzaSyClJNqPiKma3ocMtGu4MmB6zu4F5yL9Rys"; // 💎 여기에 Gemini API 키를 입력하세요.
@@ -1735,6 +1735,8 @@
         }
 
     </script>
+    {% endraw %}
+    
 </body>
 
 </html>
